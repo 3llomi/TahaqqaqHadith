@@ -1,0 +1,821 @@
+package com.devlomi.tahaqqaqhadith.ui.home
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import com.devlomi.tahaqqaqhadith.common.util.Util
+import com.devlomi.tahaqqaqhadith.data.model.HadithEntry
+import com.devlomi.tahaqqaqhadith.data.model.HadithSearchResult
+import com.devlomi.tahaqqaqhadith.data.model.LegitimacyAssessment
+import com.devlomi.tahaqqaqhadith.data.model.LegitimacyState
+import com.devlomi.tahaqqaqhadith.ui.theme.HadithTheme
+import myapplication.shared.generated.resources.Res
+import myapplication.shared.generated.resources.ic_book
+import myapplication.shared.generated.resources.ic_book_2
+import myapplication.shared.generated.resources.ic_edu
+import myapplication.shared.generated.resources.ic_person
+import myapplication.shared.generated.resources.ic_verify
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+
+@Composable
+fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
+    var query by remember { mutableStateOf("") }
+    var expandedHadithKeys by remember { mutableStateOf(setOf<String>()) }
+
+    val groupedEntries = remember(state.data?.entries) {
+        state.data.orEmptyGroupedEntries()
+    }
+
+    LaunchedEffect(Unit) {
+        onEvent(HomeEvents.Search("بورك"))
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
+    ) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            item {
+                if (state.data == null && !state.isLoading) {
+                    HeroSearchSection(
+                        query = query,
+                        onQueryChange = { query = it },
+                        onSearch = { onEvent(HomeEvents.Search(query.trim())) }
+                    )
+                } else {
+                    SearchInputBar(
+                        query = query,
+                        onQueryChange = { query = it },
+                        onSearch = { onEvent(HomeEvents.Search(query.trim())) }
+                    )
+                }
+            }
+
+            when {
+                state.isLoading -> {
+                    item {
+                        ShimmerLoadingList()
+                    }
+                }
+
+                state.data != null -> {
+                    items(groupedEntries, key = { it.key }) { group ->
+                        HadithGroupCard(
+                            group = group,
+                            isExpanded = group.key in expandedHadithKeys,
+                            onToggle = {
+                                expandedHadithKeys = if (group.key in expandedHadithKeys) {
+                                    expandedHadithKeys - group.key
+                                } else {
+                                    expandedHadithKeys + group.key
+                                }
+                            }
+                        )
+                    }
+                }
+
+                else -> {
+                    item {
+                        HintCard("ابدأ بالبحث لتظهر نتيجة الحكم مع تفاصيل المراجع.")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroSearchSection(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+) {
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(114.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_book_2),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(42.dp)
+                )
+            }
+
+            Text(
+                text = "ابحث عن صحة الحديث",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+
+            Text(
+                text = "اكتشف صحة الأحاديث النبوية من خلال قواعد بيانات موثقة ومحققة من قبل كبار العلماء والباحثين.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.82f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.9f)
+            )
+
+            SearchInputBar(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = onSearch,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchInputBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+    ) {
+        //TODO Consider USING THIS AS ROOT
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = {}) {
+                    Icon(
+                        imageVector = Icons.Filled.Tune,
+                        contentDescription = "فلترة",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                    )
+                }
+
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Right,
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { innerTextField ->
+                        if (query.isBlank()) {
+                            Text(
+                                text = "اكتب طرفا من الحديث أو اسم الراوي",
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.36f),
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Right,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        innerTextField()
+                    }
+                )
+
+                IconButton(onClick = onSearch) {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = "بحث",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun HadithGroupCard(
+    group: HadithGroup,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val groupStateColor = stateColor(group.bestEntry.assessment.state)
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.25.dp, groupStateColor.copy(alpha = 0.55f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing))
+    ) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
+
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 28.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            StatusPill(
+                                text = group.bestEntry.assessment.state.toUiTitle(),
+                                state = group.bestEntry.assessment.state
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "${group.narrations.size} روايات",
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                        Text(
+                            text = "\"${group.bestEntry.hadithText}\"",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Right,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+            }
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+
+
+                DottedScoreSeparator(score = group.bestEntry.assessment.score)
+
+                MetaRow(
+                    label = "الراوي",
+                    value = group.bestEntry.narrator,
+                    iconRes = Res.drawable.ic_person,
+                )
+                MetaRow(
+                    label = "المحدث",
+                    value = group.bestEntry.scholar,
+                    iconRes = Res.drawable.ic_edu,
+                )
+                MetaRow(
+                    label = "المصدر",
+                    value = "${group.bestEntry.source} (${group.bestEntry.pageOrNumber})",
+                    iconRes = Res.drawable.ic_book,
+                )
+                MetaRow(
+                    label = "الحُكم",
+                    value = group.bestEntry.verdict,
+                    iconRes = Res.drawable.ic_verify,
+                    valueColor = stateColor(group.bestEntry.assessment.state),
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onToggle)
+                ) {
+                    val iconRotation by animateFloatAsState(
+                        targetValue = if (isExpanded) 180f else 0f,
+                        animationSpec = tween(durationMillis = 250),
+                        label = "expand_icon_rotation"
+                    )
+                    Text(
+                        text = "التفاصيل",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = onToggle) {
+                        Icon(
+                            imageVector = Icons.Filled.ExpandMore,
+                            contentDescription = if (isExpanded) "إخفاء الروايات" else "عرض الروايات",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.graphicsLayer { rotationZ = iconRotation }
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = expandVertically(animationSpec = tween(280)) + fadeIn(animationSpec = tween(220)),
+                    exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(animationSpec = tween(180))
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                    group.narrations.forEachIndexed { index, entry ->
+                        NarrationCard(entry = entry, index = index + 1)
+                    }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusPill(text: String, state: LegitimacyState) {
+    val (background, content) = when (state) {
+        LegitimacyState.AUTHENTIC -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSecondary
+        LegitimacyState.NEEDS_REVIEW -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
+        LegitimacyState.WEAK_OR_REJECTED -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
+    }
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(background)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = content,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun DottedScoreSeparator(score: Int) {
+    val dottedColor = MaterialTheme.colorScheme.outline
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .drawBehind {
+                    drawLine(
+                        color = dottedColor,
+                        start = Offset(0f, center.y),
+                        end = Offset(size.width, center.y),
+                        strokeWidth = 2f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
+                    )
+                }
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Verified,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "$score/100",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetaRow(
+    label: String,
+    value: String,
+    iconRes: DrawableResource,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f))
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    modifier = Modifier.size(24.dp),
+                    painter = painterResource(iconRes),
+                    contentDescription = label,
+                    tint = MaterialTheme.colorScheme.onTertiary,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = valueColor,
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.fillMaxWidth(),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+
+        }
+    }
+}
+
+@Composable
+private fun NarrationCard(entry: HadithEntry, index: Int) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 16.dp, horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            NarrationDetailLine(
+                label = "رواية",
+                value = "#$index",
+                iconRes = Res.drawable.ic_book,
+            )
+
+            NarrationDetailLine(
+                label = "الراوي",
+                value = entry.narrator,
+                iconRes = Res.drawable.ic_person,
+            )
+            NarrationDetailLine(
+                label = "المحدث",
+                value = entry.scholar,
+                iconRes = Res.drawable.ic_edu,
+            )
+            NarrationDetailLine(
+                label = "المصدر",
+                value = "${entry.source} (${entry.pageOrNumber})",
+                iconRes = Res.drawable.ic_book,
+            )
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.22f),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+            NarrationDetailLine(
+                label = "الحكم",
+                value = entry.verdict,
+                iconRes = Res.drawable.ic_verify,
+                valueColor = stateColor(entry.assessment.state),
+            )
+
+        }
+    }
+}
+
+@Composable
+private fun NarrationDetailLine(
+    label: String,
+    value: String,
+    iconRes: DrawableResource,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            modifier = Modifier
+                .size(18.dp)
+                .padding(top = 2.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+            textAlign = TextAlign.Right,
+            modifier = Modifier.width(66.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = valueColor,
+            textAlign = TextAlign.Right,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+private data class HadithGroup(
+    val key: String,
+    val bestEntry: HadithEntry,
+    val narrations: List<HadithEntry>,
+)
+
+private fun HadithSearchResult?.orEmptyGroupedEntries(): List<HadithGroup> {
+    if (this == null) return emptyList()
+
+    return entries
+        .groupBy { Util.sanitizeHadithText(it.hadithText) }
+        .mapNotNull { (key, narrations) ->
+            val sorted = narrations.sortedByDescending { it.assessment.score }
+            val best = sorted.firstOrNull() ?: return@mapNotNull null
+            HadithGroup(key = key, bestEntry = best, narrations = sorted)
+        }
+        .sortedByDescending { it.bestEntry.assessment.score }
+}
+
+@Composable
+private fun HintCard(message: String) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        )
+    }
+}
+
+@Composable
+private fun ShimmerLoadingList() {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(3) {
+            ShimmerGroupCard()
+        }
+    }
+}
+
+@Composable
+private fun ShimmerGroupCard() {
+    val shimmerBrush = rememberShimmerBrush()
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(shimmerBrush)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(shimmerBrush)
+            )
+            repeat(4) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(shimmerBrush)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberShimmerBrush(): Brush {
+    val transition = rememberInfiniteTransition(label = "shimmer_transition")
+    val xShift = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_x"
+    )
+
+    val base = MaterialTheme.colorScheme.surface
+    return Brush.linearGradient(
+        colors = listOf(
+            base.copy(alpha = 0.65f),
+            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+            base.copy(alpha = 0.65f)
+        ),
+        start = Offset(xShift.value - 220f, 0f),
+        end = Offset(xShift.value, 220f)
+    )
+}
+
+@Composable
+private fun stateColor(state: LegitimacyState): Color {
+    return when (state) {
+        LegitimacyState.AUTHENTIC -> MaterialTheme.colorScheme.secondary
+        LegitimacyState.NEEDS_REVIEW -> MaterialTheme.colorScheme.primary
+        LegitimacyState.WEAK_OR_REJECTED -> MaterialTheme.colorScheme.error
+    }
+}
+
+private fun LegitimacyState.toUiTitle(): String {
+    return when (this) {
+        LegitimacyState.AUTHENTIC -> "راجح الصحة"
+        LegitimacyState.NEEDS_REVIEW -> "يحتاج مراجعة"
+        LegitimacyState.WEAK_OR_REJECTED -> "ضعيف أو غير ثابت"
+    }
+}
+
+@Preview
+@Composable
+private fun HadithGroupCardPreviewCollapsed() {
+    HadithTheme {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp)
+        ) {
+            HadithGroupCard(
+                group = previewGroup(),
+                isExpanded = false,
+                onToggle = {}
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun HadithGroupCardPreviewExpanded() {
+    HadithTheme {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp)
+        ) {
+            HadithGroupCard(
+                group = previewGroup(),
+                isExpanded = true,
+                onToggle = {}
+            )
+        }
+    }
+}
+
+private fun previewGroup(): HadithGroup {
+    val topAssessment = LegitimacyAssessment(
+        score = 88,
+        state = LegitimacyState.AUTHENTIC,
+        reason = "تعدد الطرق وتحسن بعض الأسانيد"
+    )
+    val secondaryAssessment = LegitimacyAssessment(
+        score = 64,
+        state = LegitimacyState.NEEDS_REVIEW,
+        reason = "في الإسناد اختلاف يحتاج مراجعة"
+    )
+
+    val topEntry = HadithEntry(
+        index = 1,
+        hadithText = "إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى، فمن كانت هجرته إلى الله ورسوله فهجرته إلى الله ورسوله.",
+        narrator = "عمر بن الخطاب",
+        scholar = "البخاري",
+        source = "صحيح البخاري",
+        pageOrNumber = "1",
+        verdict = "صحيح",
+        assessment = topAssessment
+    )
+
+    val secondEntry = HadithEntry(
+        index = 2,
+        hadithText = topEntry.hadithText,
+        narrator = "عائشة أم المؤمنين",
+        scholar = "الترمذي",
+        source = "سنن الترمذي",
+        pageOrNumber = "1647",
+        verdict = "حسن",
+        assessment = secondaryAssessment
+    )
+
+    return HadithGroup(
+        key = Util.sanitizeHadithText(topEntry.hadithText),
+        bestEntry = topEntry,
+        narrations = listOf(topEntry, secondEntry)
+    )
+}
+
