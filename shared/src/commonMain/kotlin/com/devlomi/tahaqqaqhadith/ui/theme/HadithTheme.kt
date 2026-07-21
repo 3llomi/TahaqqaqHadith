@@ -11,8 +11,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import myapplication.shared.generated.resources.Res
+import myapplication.shared.generated.resources.alex
 import myapplication.shared.generated.resources.amiri
 import myapplication.shared.generated.resources.literata
+import myapplication.shared.generated.resources.noto_sans_arabic
 import myapplication.shared.generated.resources.noto_serif
 import myapplication.shared.generated.resources.source_sans
 import org.jetbrains.compose.resources.Font
@@ -33,6 +35,7 @@ val TahaqqaqOnTeritary = Color(0xFF00734D) //TODO HANDLE DARK
 // Semantic colors
 val AuthenticSuccess = Color(0xFF2EB67D)
 val WeakError = Color(0xFFBA1A1A)
+val ErrorBg = Color(0xFFFF9090)
 
 // Compatibility aliases used by existing UI files.
 val GoldenWheat = TahaqqaqPrimaryDark
@@ -82,8 +85,7 @@ private val hadithDarkColorScheme = darkColorScheme(
 @Composable
 fun HadithTheme(content: @Composable () -> Unit) {
     val amiriFontFamily = FontFamily(Font(resource = Res.font.amiri, weight = FontWeight.Normal))
-    val notoSerifFamily = FontFamily(Font(resource = Res.font.literata, weight = FontWeight.Normal))
-    val sourceSansFamily = FontFamily(Font(resource = Res.font.source_sans, weight = FontWeight.Normal))
+    val notoSansArabic = FontFamily(Font(resource = Res.font.noto_sans_arabic, weight = FontWeight.Normal))
 
     val colorScheme = if (isSystemInDarkTheme()) hadithDarkColorScheme else hadithLightColorScheme
 
@@ -91,8 +93,8 @@ fun HadithTheme(content: @Composable () -> Unit) {
         colorScheme = colorScheme,
         typography = Typography().withRoleFonts(
             headlineFamily = amiriFontFamily,
-            bodyFamily = notoSerifFamily,
-            labelFamily = sourceSansFamily,
+            bodyFamily = notoSansArabic,
+            labelFamily = notoSansArabic,
         ),
     ) {
         content()

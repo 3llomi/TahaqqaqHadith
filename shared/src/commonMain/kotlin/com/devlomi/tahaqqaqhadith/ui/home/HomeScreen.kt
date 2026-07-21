@@ -37,18 +37,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -59,12 +58,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
@@ -76,17 +72,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.automirrored.filled.Launch
+import androidx.compose.ui.platform.LocalUriHandler
 import com.devlomi.tahaqqaqhadith.common.util.Util
 import com.devlomi.tahaqqaqhadith.data.model.HadithEntry
 import com.devlomi.tahaqqaqhadith.data.model.HadithSearchResult
 import com.devlomi.tahaqqaqhadith.data.model.LegitimacyAssessment
 import com.devlomi.tahaqqaqhadith.data.model.LegitimacyState
+import com.devlomi.tahaqqaqhadith.ui.components.cropVerticalPadding
+import com.devlomi.tahaqqaqhadith.ui.theme.ErrorBg
 import com.devlomi.tahaqqaqhadith.ui.theme.HadithTheme
 import myapplication.shared.generated.resources.Res
 import myapplication.shared.generated.resources.ic_book
 import myapplication.shared.generated.resources.ic_book_2
+import myapplication.shared.generated.resources.ic_close
 import myapplication.shared.generated.resources.ic_edu
 import myapplication.shared.generated.resources.ic_person
+import myapplication.shared.generated.resources.ic_question_mark
 import myapplication.shared.generated.resources.ic_verify
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -95,6 +97,7 @@ import org.jetbrains.compose.resources.painterResource
 fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
     var query by remember { mutableStateOf("") }
     var expandedHadithKeys by remember { mutableStateOf(setOf<String>()) }
+    val uriHandler = LocalUriHandler.current
 
     val groupedEntries = remember(state.data?.entries) {
         state.data.orEmptyGroupedEntries()
@@ -107,55 +110,106 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            item {
-                if (state.data == null && !state.isLoading) {
-                    HeroSearchSection(
-                        query = query,
-                        onQueryChange = { query = it },
-                        onSearch = { onEvent(HomeEvents.Search(query.trim())) }
-                    )
-                } else {
-                    SearchInputBar(
-                        query = query,
-                        onQueryChange = { query = it },
-                        onSearch = { onEvent(HomeEvents.Search(query.trim())) }
-                    )
-                }
-            }
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            AppToolbar()
 
-            when {
-                state.isLoading -> {
-                    item {
-                        ShimmerLoadingList()
-                    }
-                }
-
-                state.data != null -> {
-                    items(groupedEntries, key = { it.key }) { group ->
-                        HadithGroupCard(
-                            group = group,
-                            isExpanded = group.key in expandedHadithKeys,
-                            onToggle = {
-                                expandedHadithKeys = if (group.key in expandedHadithKeys) {
-                                    expandedHadithKeys - group.key
-                                } else {
-                                    expandedHadithKeys + group.key
-                                }
-                            }
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(
+                    bottom = 16.dp,
+                    top = 16.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                item {
+                    if (state.data == null && !state.isLoading) {
+                        HeroSearchSection(
+                            query = query,
+                            onQueryChange = { query = it },
+                            onSearch = { onEvent(HomeEvents.Search(query.trim())) }
+                        )
+                    } else {
+                        SearchInputBar(
+                            query = query,
+                            onQueryChange = { query = it },
+                            onSearch = { onEvent(HomeEvents.Search(query.trim())) }
                         )
                     }
                 }
 
-                else -> {
-                    item {
-                        HintCard("ابدأ بالبحث لتظهر نتيجة الحكم مع تفاصيل المراجع.")
+                when {
+                    state.isLoading -> {
+                        item {
+                            ShimmerLoadingList()
+                        }
+                    }
+
+                    state.data != null -> {
+                        items(groupedEntries, key = { it.key }) { group ->
+                            HadithGroupCard(
+                                group = group,
+                                isExpanded = group.key in expandedHadithKeys,
+                                onToggle = {
+                                    expandedHadithKeys = if (group.key in expandedHadithKeys) {
+                                        expandedHadithKeys - group.key
+                                    } else {
+                                        expandedHadithKeys + group.key
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    else -> {
+                        item {
+                            HintCard("ابدأ بالبحث لتظهر نتيجة الحكم مع تفاصيل المراجع.")
+                        }
+                    }
+                }
+                item{
+                    // Show More Button
+                    if (state.data != null && query.isNotBlank()) {
+                        ShowMoreResultsButton(
+                            query = query,
+                            onOpenUrl = { url ->
+                                uriHandler.openUri(url)
+                            }
+                        )
                     }
                 }
             }
+
+
+        }
+    }
+}
+
+@Composable
+private fun AppToolbar() {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "تحقق الحديث",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
     }
 }
@@ -220,8 +274,10 @@ private fun SearchInputBar(
 ) {
     Card(
         shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth(),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
     ) {
         //TODO Consider USING THIS AS ROOT
@@ -286,6 +342,7 @@ private fun HadithGroupCard(
     isExpanded: Boolean,
     onToggle: () -> Unit,
 ) {
+    var showScoreDialog by remember { mutableStateOf(false) }
     val groupStateColor = stateColor(group.bestEntry.assessment.state)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -293,7 +350,12 @@ private fun HadithGroupCard(
         border = BorderStroke(1.25.dp, groupStateColor.copy(alpha = 0.55f)),
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing))
+            .animateContentSize(
+                animationSpec = tween(
+                    durationMillis = 280,
+                    easing = FastOutSlowInEasing
+                )
+            )
     ) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Column(
@@ -315,6 +377,8 @@ private fun HadithGroupCard(
                             horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+
+                            Spacer(modifier = Modifier.width(12.dp))
                             StatusPill(
                                 text = group.bestEntry.assessment.state.toUiTitle(),
                                 state = group.bestEntry.assessment.state
@@ -323,6 +387,12 @@ private fun HadithGroupCard(
                             Text(
                                 "${group.narrations.size} روايات",
                                 style = MaterialTheme.typography.labelSmall,
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            ScoreCircle(
+                                score = group.bestEntry.assessment.score,
+                                state = group.bestEntry.assessment.state,
+                                onClick = { showScoreDialog = true }
                             )
                         }
                         Text(
@@ -343,8 +413,6 @@ private fun HadithGroupCard(
             ) {
 
 
-                DottedScoreSeparator(score = group.bestEntry.assessment.score)
-
                 MetaRow(
                     label = "الراوي",
                     value = group.bestEntry.narrator,
@@ -363,8 +431,13 @@ private fun HadithGroupCard(
                 MetaRow(
                     label = "الحُكم",
                     value = group.bestEntry.verdict,
-                    iconRes = Res.drawable.ic_verify,
+                    iconRes = stateIcon(group.bestEntry.assessment.state),
                     valueColor = stateColor(group.bestEntry.assessment.state),
+                    iconTintColor = stateColor(group.bestEntry.assessment.state),
+                    iconTintBgColor = if (group.bestEntry.assessment.state == LegitimacyState.WEAK_OR_REJECTED) ErrorBg
+                    else MaterialTheme.colorScheme.tertiary.copy(
+                        alpha = 0.18f
+                    ),
                 )
 
                 Row(
@@ -396,18 +469,192 @@ private fun HadithGroupCard(
 
                 AnimatedVisibility(
                     visible = isExpanded,
-                    enter = expandVertically(animationSpec = tween(280)) + fadeIn(animationSpec = tween(220)),
-                    exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(animationSpec = tween(180))
+                    enter = expandVertically(animationSpec = tween(280)) + fadeIn(
+                        animationSpec = tween(
+                            220
+                        )
+                    ),
+                    exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(
+                        animationSpec = tween(
+                            180
+                        )
+                    )
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
-                    group.narrations.forEachIndexed { index, entry ->
-                        NarrationCard(entry = entry, index = index + 1)
-                    }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                        group.narrations.forEachIndexed { index, entry ->
+                            NarrationCard(entry = entry, index = index + 1)
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (showScoreDialog) {
+        ScoreExplanationDialog(
+            score = group.bestEntry.assessment.score,
+            assessment = group.bestEntry.assessment,
+            onDismiss = { showScoreDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun ScoreCircle(
+    score: Int,
+    state: LegitimacyState,
+    onClick: () -> Unit
+) {
+    val color = stateColor(state)
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(
+            progress = { score / 100f },
+            modifier = Modifier.fillMaxSize(),
+            color = color,
+            strokeWidth = 3.dp,
+            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        )
+        Text(
+            text = score.toString(),
+            style = MaterialTheme.typography.labelLarge,
+            color = color,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun ScoreExplanationDialog(
+    score: Int,
+    assessment: LegitimacyAssessment,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "شرح الدرجة",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            progress = { score / 100f },
+                            modifier = Modifier.fillMaxSize(),
+                            color = stateColor(assessment.state),
+                            strokeWidth = 2.5.dp,
+                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                        )
+                        Text(
+                            text = score.toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = stateColor(assessment.state),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "الدرجة",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = "$score من 100",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                Text(
+                    text = "التوضيح",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = assessment.reason.ifBlank { "جاري تقييم الحديث..." },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Justify
+                )
+
+                Text(
+                    text = "معايير التقييم:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    ScoreCriteriaItem("تعدد الطرق والأسانيد")
+                    ScoreCriteriaItem("سلامة السند")
+                    ScoreCriteriaItem("سلامة المتن")
+                    ScoreCriteriaItem("شهرة الحديث")
+                    ScoreCriteriaItem("آراء العلماء والمحدثين")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("حسناً")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ScoreCriteriaItem(text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+        )
     }
 }
 
@@ -433,45 +680,6 @@ private fun StatusPill(text: String, state: LegitimacyState) {
     }
 }
 
-@Composable
-private fun DottedScoreSeparator(score: Int) {
-    val dottedColor = MaterialTheme.colorScheme.outline
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .drawBehind {
-                    drawLine(
-                        color = dottedColor,
-                        start = Offset(0f, center.y),
-                        end = Offset(size.width, center.y),
-                        strokeWidth = 2f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
-                    )
-                }
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Verified,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "$score/100",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
 
 @Composable
 private fun MetaRow(
@@ -479,11 +687,15 @@ private fun MetaRow(
     value: String,
     iconRes: DrawableResource,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    iconTintColor: Color = MaterialTheme.colorScheme.onTertiary,
+    iconTintBgColor: Color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f)
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -494,7 +706,7 @@ private fun MetaRow(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f))
+                    .background(iconTintBgColor)
                     .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -502,13 +714,13 @@ private fun MetaRow(
                     modifier = Modifier.size(24.dp),
                     painter = painterResource(iconRes),
                     contentDescription = label,
-                    tint = MaterialTheme.colorScheme.onTertiary,
+                    tint = iconTintColor,
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
                     text = label,
@@ -516,13 +728,15 @@ private fun MetaRow(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                     textAlign = TextAlign.Right,
                     modifier = Modifier.fillMaxWidth()
+                        .cropVerticalPadding(MaterialTheme.typography.bodyMedium.fontSize)
                 )
                 Text(
                     text = value,
                     style = MaterialTheme.typography.bodyMedium,
                     color = valueColor,
                     textAlign = TextAlign.Right,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .cropVerticalPadding(MaterialTheme.typography.bodyMedium.fontSize),
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -537,7 +751,10 @@ private fun NarrationCard(entry: HadithEntry, index: Int) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+
     ) {
         Column(
             modifier = Modifier.padding(vertical = 16.dp, horizontal = 12.dp),
@@ -571,8 +788,9 @@ private fun NarrationCard(entry: HadithEntry, index: Int) {
             NarrationDetailLine(
                 label = "الحكم",
                 value = entry.verdict,
-                iconRes = Res.drawable.ic_verify,
+                iconRes = stateIcon(entry.assessment.state),
                 valueColor = stateColor(entry.assessment.state),
+                iconTintColor = stateColor(entry.assessment.state)
             )
 
         }
@@ -585,6 +803,7 @@ private fun NarrationDetailLine(
     value: String,
     iconRes: DrawableResource,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    iconTintColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -593,7 +812,7 @@ private fun NarrationDetailLine(
         Icon(
             painter = painterResource(iconRes),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            tint = iconTintColor,
             modifier = Modifier
                 .size(18.dp)
                 .padding(top = 2.dp)
@@ -638,7 +857,10 @@ private fun HadithSearchResult?.orEmptyGroupedEntries(): List<HadithGroup> {
 
 @Composable
 private fun HintCard(message: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
         Text(
             text = message,
             color = MaterialTheme.colorScheme.onSurface,
@@ -665,7 +887,9 @@ private fun ShimmerGroupCard() {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.fillMaxWidth()
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -732,11 +956,96 @@ private fun stateColor(state: LegitimacyState): Color {
     }
 }
 
+@Composable
+private fun stateIcon(state: LegitimacyState): DrawableResource {
+    return when (state) {
+        LegitimacyState.AUTHENTIC -> Res.drawable.ic_verify
+        LegitimacyState.NEEDS_REVIEW -> Res.drawable.ic_question_mark
+        LegitimacyState.WEAK_OR_REJECTED -> Res.drawable.ic_close
+    }
+}
+
 private fun LegitimacyState.toUiTitle(): String {
     return when (this) {
         LegitimacyState.AUTHENTIC -> "راجح الصحة"
         LegitimacyState.NEEDS_REVIEW -> "يحتاج مراجعة"
         LegitimacyState.WEAK_OR_REJECTED -> "ضعيف أو غير ثابت"
+    }
+}
+
+@Composable
+private fun ShowMoreResultsButton(
+    query: String,
+    onOpenUrl: (String) -> Unit
+) {
+    //TODO USE HTTP ENCODE?
+    val encodedQuery = query.trim().replace(" ", "%20")
+        .replace("ا", "%D8%A7")
+        .replace("ب", "%D8%A8")
+        .replace("ت", "%D8%AA")
+        .replace("ث", "%D8%AB")
+        .replace("ج", "%D8%AC")
+        .replace("ح", "%D8%AD")
+        .replace("خ", "%D8%AE")
+        .replace("د", "%D8%AF")
+        .replace("ذ", "%D8%B0")
+        .replace("ر", "%D8%B1")
+        .replace("ز", "%D8%B2")
+        .replace("س", "%D8%B3")
+        .replace("ش", "%D8%B4")
+        .replace("ص", "%D8%B5")
+        .replace("ض", "%D8%B6")
+        .replace("ط", "%D8%B7")
+        .replace("ظ", "%D8%B8")
+        .replace("ع", "%D8%B9")
+        .replace("غ", "%D8%BA")
+        .replace("ف", "%D9%81")
+        .replace("ق", "%D9%82")
+        .replace("ك", "%D9%83")
+        .replace("ل", "%D9%84")
+        .replace("م", "%D9%85")
+        .replace("ن", "%D9%86")
+        .replace("ه", "%D9%87")
+        .replace("و", "%D9%88")
+        .replace("ي", "%D9%8A")
+
+    val dorarUrl = "https://dorar.net/hadith/search?q=$encodedQuery"
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenUrl(dorarUrl) }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "عرض المزيد من النتائج",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Default.Launch,
+                    contentDescription = "الانتقال إلى الموقع الخارجي",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     }
 }
 
@@ -818,4 +1127,3 @@ private fun previewGroup(): HadithGroup {
         narrations = listOf(topEntry, secondEntry)
     )
 }
-
