@@ -1,6 +1,9 @@
 package com.devlomi.tahaqqaqhadith.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,26 +25,27 @@ import org.koin.dsl.koinConfiguration
 @Preview
 fun App() {
     HadithTheme {
-        KoinApplication(
-            koinConfiguration {
-                koinApplication {
-                    modules(
-                        networkModule(), useCaseModule(), viewModelModule()
-                    )
-                }
-            },content = {
-                NavHost(
-                    navController = rememberNavController(),
-                    startDestination = Screen.Home.route
-                ) {
-                    composable(Screen.Home.route) {
-                        val viewModel = koinViewModel<HomeViewModel>()
-                        val state = viewModel.state.collectAsStateWithLifecycle().value
-                        HomeScreen(state, onEvent = viewModel::onEvent)
+        Box(modifier = Modifier.safeDrawingPadding()) {
+            KoinApplication(
+                koinConfiguration {
+                    koinApplication {
+                        modules(
+                            networkModule(), useCaseModule(), viewModelModule()
+                        )
+                    }
+                }, content = {
+                    NavHost(
+                        navController = rememberNavController(),
+                        startDestination = Screen.Home.route
+                    ) {
+                        composable(Screen.Home.route) {
+                            val viewModel = koinViewModel<HomeViewModel>()
+                            val state = viewModel.state.collectAsStateWithLifecycle().value
+                            HomeScreen(state, onEvent = viewModel::onEvent)
+                        }
                     }
                 }
-            }
-        )
-
+            )
+        }
     }
 }

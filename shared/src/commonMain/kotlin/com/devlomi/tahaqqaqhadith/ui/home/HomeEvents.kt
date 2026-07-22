@@ -1,5 +1,6 @@
 package com.devlomi.tahaqqaqhadith.ui.home
 
 sealed class HomeEvents {
-    data class Search(val query: String): HomeEvents()
+    data object Search: HomeEvents()
+    data class OnQueryTextChange(val text: String): HomeEvents()
 }

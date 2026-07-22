@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-//    id("app.cash.sqldelight") version "2.4.0-SNAPSHOT"
+    id("app.cash.sqldelight") version libs.versions.sqldelight.get()
 
 }
 
@@ -47,7 +47,7 @@ kotlin {
             implementation(libs.compose.uiTooling)
             implementation(libs.ktor.client.okhttp)
 
-//            implementation("app.cash.sqldelight:android-driver:2.4.0-SNAPSHOT")
+            implementation(libs.sqldelight.android.driver)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -68,10 +68,13 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.navigation.compose)
+            implementation(libs.sqldelight.coroutines.extensions)
+
 
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            implementation(libs.sqldelight.native.driver)
 
 
         }
@@ -83,4 +86,12 @@ kotlin {
 
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
+}
+
+sqldelight {
+    databases {
+        register("Database") {
+            packageName.set("com.devlomi.tahaqqaqhadith.datasource.cache")
+        }
+    }
 }

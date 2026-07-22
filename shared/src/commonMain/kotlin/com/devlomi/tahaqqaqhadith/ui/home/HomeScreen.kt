@@ -33,6 +33,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
@@ -75,13 +76,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.Launch
 import androidx.compose.ui.platform.LocalUriHandler
 import com.devlomi.tahaqqaqhadith.common.util.Util
+import com.devlomi.tahaqqaqhadith.data.HadithQueryPlaceholderDataSource
 import com.devlomi.tahaqqaqhadith.data.model.HadithEntry
 import com.devlomi.tahaqqaqhadith.data.model.HadithSearchResult
 import com.devlomi.tahaqqaqhadith.data.model.LegitimacyAssessment
 import com.devlomi.tahaqqaqhadith.data.model.LegitimacyState
-import com.devlomi.tahaqqaqhadith.ui.components.cropVerticalPadding
 import com.devlomi.tahaqqaqhadith.ui.theme.ErrorBg
 import com.devlomi.tahaqqaqhadith.ui.theme.HadithTheme
+import io.ktor.http.encodeURLParameter
 import myapplication.shared.generated.resources.Res
 import myapplication.shared.generated.resources.ic_book
 import myapplication.shared.generated.resources.ic_book_2
@@ -95,7 +97,6 @@ import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
-    var query by remember { mutableStateOf("") }
     var expandedHadithKeys by remember { mutableStateOf(setOf<String>()) }
     val uriHandler = LocalUriHandler.current
 
@@ -104,7 +105,8 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        onEvent(HomeEvents.Search("بورك"))
+//        onEvent(HomeEvents.OnQueryTextChange("بورك"))
+//        onEvent(HomeEvents.Search)
     }
 
     Surface(
@@ -130,15 +132,17 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                 item {
                     if (state.data == null && !state.isLoading) {
                         HeroSearchSection(
-                            query = query,
-                            onQueryChange = { query = it },
-                            onSearch = { onEvent(HomeEvents.Search(query.trim())) }
+                            query = state.query,
+                            placeholder = state.queryPlaceholder,
+                            onQueryChange = { onEvent(HomeEvents.OnQueryTextChange(it)) },
+                            onSearch = { onEvent(HomeEvents.Search) }
                         )
                     } else {
                         SearchInputBar(
-                            query = query,
-                            onQueryChange = { query = it },
-                            onSearch = { onEvent(HomeEvents.Search(query.trim())) }
+                            query = state.query,
+                            placeholder = state.queryPlaceholder,
+                            onQueryChange = { onEvent(HomeEvents.OnQueryTextChange(it)) },
+                            onSearch = { onEvent(HomeEvents.Search) }
                         )
                     }
                 }
@@ -166,17 +170,12 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                         }
                     }
 
-                    else -> {
-                        item {
-                            HintCard("ابدأ بالبحث لتظهر نتيجة الحكم مع تفاصيل المراجع.")
-                        }
-                    }
                 }
                 item{
                     // Show More Button
-                    if (state.data != null && query.isNotBlank()) {
+                    if (state.data?.entries?.isNotEmpty() == true && state.submittedSearchQuery.isNotEmpty()) {
                         ShowMoreResultsButton(
-                            query = query,
+                            query = state.submittedSearchQuery,
                             onOpenUrl = { url ->
                                 uriHandler.openUri(url)
                             }
@@ -184,6 +183,15 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                     }
                 }
             }
+
+            Text(" جميع الأحاديث مُقدمة من موقع الدرر السُنية ولا نملك أي حقوق للمحتوى.",
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                textAlign = TextAlign.Right
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
 
 
         }
@@ -217,6 +225,7 @@ private fun AppToolbar() {
 @Composable
 private fun HeroSearchSection(
     query: String,
+    placeholder: String,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
 ) {
@@ -257,8 +266,10 @@ private fun HeroSearchSection(
                 modifier = Modifier.fillMaxWidth(0.9f)
             )
 
+            //TODO WHY WE HAVE TWO SEARCH BARS? MAYBE REMOVE ONE
             SearchInputBar(
                 query = query,
+                placeholder = placeholder,
                 onQueryChange = onQueryChange,
                 onSearch = onSearch,
             )
@@ -269,6 +280,7 @@ private fun HeroSearchSection(
 @Composable
 private fun SearchInputBar(
     query: String,
+    placeholder: String,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
 ) {
@@ -288,18 +300,18 @@ private fun SearchInputBar(
                     .padding(horizontal = 6.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = {}) {
+                IconButton(onClick = onSearch) {
                     Icon(
-                        imageVector = Icons.Filled.Tune,
-                        contentDescription = "فلترة",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = "بحث",
+                        tint = MaterialTheme.colorScheme.secondary
                     )
                 }
 
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,
-                    singleLine = true,
+                    maxLines = 3,
                     textStyle = TextStyle(
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = MaterialTheme.typography.bodyLarge.fontSize,
@@ -312,7 +324,7 @@ private fun SearchInputBar(
                     decorationBox = { innerTextField ->
                         if (query.isBlank()) {
                             Text(
-                                text = "اكتب طرفا من الحديث أو اسم الراوي",
+                                text = placeholder,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.36f),
                                 style = MaterialTheme.typography.bodyLarge,
                                 textAlign = TextAlign.Right,
@@ -322,14 +334,6 @@ private fun SearchInputBar(
                         innerTextField()
                     }
                 )
-
-                IconButton(onClick = onSearch) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = "بحث",
-                        tint = MaterialTheme.colorScheme.secondary
-                    )
-                }
             }
         }
     }
@@ -536,105 +540,105 @@ private fun ScoreExplanationDialog(
     assessment: LegitimacyAssessment,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "شرح الدرجة",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    text = "شرح الدرجة",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        CircularProgressIndicator(
-                            progress = { score / 100f },
-                            modifier = Modifier.fillMaxSize(),
-                            color = stateColor(assessment.state),
-                            strokeWidth = 2.5.dp,
-                            trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                        )
-                        Text(
-                            text = score.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = stateColor(assessment.state),
-                            fontWeight = FontWeight.Bold
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                progress = { score / 100f },
+                                modifier = Modifier.fillMaxSize(),
+                                color = stateColor(assessment.state),
+                                strokeWidth = 2.5.dp,
+                                trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            )
+                            Text(
+                                text = score.toString(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = stateColor(assessment.state),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "الدرجة",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = "$score",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "الدرجة",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                        Text(
-                            text = "$score من 100",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+
+                    Text(
+                        text = "كيف يتم إحتساب الدرجة؟",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Text(
+                        text = ".يتم إحتسابها بناءً على عدد الروايات الموجودة وصحة كل رواية",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Justify
+                    )
+
+
+
+                    Text(
+                        text = "ملاحظة",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+
+                    Text(
+                        text = "هذه الدرجة لا تعني صحة الحديث بشكل قطعي، بل هي مؤشر على صحة الحديث بناءً على الروايات المتاحة.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Justify
+                    )
                 }
-
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-
-                Text(
-                    text = "التوضيح",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Text(
-                    text = assessment.reason.ifBlank { "جاري تقييم الحديث..." },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Justify
-                )
-
-                Text(
-                    text = "معايير التقييم:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    ScoreCriteriaItem("تعدد الطرق والأسانيد")
-                    ScoreCriteriaItem("سلامة السند")
-                    ScoreCriteriaItem("سلامة المتن")
-                    ScoreCriteriaItem("شهرة الحديث")
-                    ScoreCriteriaItem("آراء العلماء والمحدثين")
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("حسناً")
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("حسناً")
-            }
-        }
-    )
+        )
+    }
 }
 
 @Composable
@@ -711,7 +715,7 @@ private fun MetaRow(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(32.dp),
                     painter = painterResource(iconRes),
                     contentDescription = label,
                     tint = iconTintColor,
@@ -720,7 +724,7 @@ private fun MetaRow(
             Spacer(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = label,
@@ -728,15 +732,13 @@ private fun MetaRow(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                     textAlign = TextAlign.Right,
                     modifier = Modifier.fillMaxWidth()
-                        .cropVerticalPadding(MaterialTheme.typography.bodyMedium.fontSize)
                 )
                 Text(
                     text = value,
                     style = MaterialTheme.typography.bodyMedium,
                     color = valueColor,
                     textAlign = TextAlign.Right,
-                    modifier = Modifier.fillMaxWidth()
-                        .cropVerticalPadding(MaterialTheme.typography.bodyMedium.fontSize),
+                    modifier = Modifier.fillMaxWidth(),
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -758,7 +760,7 @@ private fun NarrationCard(entry: HadithEntry, index: Int) {
     ) {
         Column(
             modifier = Modifier.padding(vertical = 16.dp, horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             NarrationDetailLine(
                 label = "رواية",
@@ -786,7 +788,7 @@ private fun NarrationCard(entry: HadithEntry, index: Int) {
                 modifier = Modifier.padding(vertical = 4.dp)
             )
             NarrationDetailLine(
-                label = "الحكم",
+                label = "الحُكم",
                 value = entry.verdict,
                 iconRes = stateIcon(entry.assessment.state),
                 valueColor = stateColor(entry.assessment.state),
@@ -814,7 +816,7 @@ private fun NarrationDetailLine(
             contentDescription = null,
             tint = iconTintColor,
             modifier = Modifier
-                .size(18.dp)
+                .size(24.dp)
                 .padding(top = 2.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -979,35 +981,7 @@ private fun ShowMoreResultsButton(
     onOpenUrl: (String) -> Unit
 ) {
     //TODO USE HTTP ENCODE?
-    val encodedQuery = query.trim().replace(" ", "%20")
-        .replace("ا", "%D8%A7")
-        .replace("ب", "%D8%A8")
-        .replace("ت", "%D8%AA")
-        .replace("ث", "%D8%AB")
-        .replace("ج", "%D8%AC")
-        .replace("ح", "%D8%AD")
-        .replace("خ", "%D8%AE")
-        .replace("د", "%D8%AF")
-        .replace("ذ", "%D8%B0")
-        .replace("ر", "%D8%B1")
-        .replace("ز", "%D8%B2")
-        .replace("س", "%D8%B3")
-        .replace("ش", "%D8%B4")
-        .replace("ص", "%D8%B5")
-        .replace("ض", "%D8%B6")
-        .replace("ط", "%D8%B7")
-        .replace("ظ", "%D8%B8")
-        .replace("ع", "%D8%B9")
-        .replace("غ", "%D8%BA")
-        .replace("ف", "%D9%81")
-        .replace("ق", "%D9%82")
-        .replace("ك", "%D9%83")
-        .replace("ل", "%D9%84")
-        .replace("م", "%D9%85")
-        .replace("ن", "%D9%86")
-        .replace("ه", "%D9%87")
-        .replace("و", "%D9%88")
-        .replace("ي", "%D9%8A")
+    val encodedQuery = query.trim().encodeURLParameter()
 
     val dorarUrl = "https://dorar.net/hadith/search?q=$encodedQuery"
 
@@ -1106,7 +1080,7 @@ private fun previewGroup(): HadithGroup {
         scholar = "البخاري",
         source = "صحيح البخاري",
         pageOrNumber = "1",
-        verdict = "صحيح",
+        verdict = "أصل هذا الحديث في إسناده إنما هو عن ابن عجلان عن ربيعة بن عثمان عن محمد بن يحيى بن حبان عن الأعرج",
         assessment = topAssessment
     )
 

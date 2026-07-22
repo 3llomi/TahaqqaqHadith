@@ -8,10 +8,3 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
 
 }
-//sqldelight {
-//    databases {
-//        register("Database") {
-//            packageName.set("com.example")
-//        }
-//    }
-//}

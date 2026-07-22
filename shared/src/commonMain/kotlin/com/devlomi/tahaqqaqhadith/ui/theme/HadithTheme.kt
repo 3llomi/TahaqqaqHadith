@@ -14,7 +14,10 @@ import myapplication.shared.generated.resources.Res
 import myapplication.shared.generated.resources.alex
 import myapplication.shared.generated.resources.amiri
 import myapplication.shared.generated.resources.literata
+import myapplication.shared.generated.resources.noto_hinted
 import myapplication.shared.generated.resources.noto_sans_arabic
+import myapplication.shared.generated.resources.noto_sans_arabic_fixed
+import myapplication.shared.generated.resources.noto_sans_reg
 import myapplication.shared.generated.resources.noto_serif
 import myapplication.shared.generated.resources.source_sans
 import org.jetbrains.compose.resources.Font
@@ -85,7 +88,7 @@ private val hadithDarkColorScheme = darkColorScheme(
 @Composable
 fun HadithTheme(content: @Composable () -> Unit) {
     val amiriFontFamily = FontFamily(Font(resource = Res.font.amiri, weight = FontWeight.Normal))
-    val notoSansArabic = FontFamily(Font(resource = Res.font.noto_sans_arabic, weight = FontWeight.Normal))
+    val notoSansArabic = FontFamily(Font(resource = Res.font.noto_hinted, weight = FontWeight.Normal))
 
     val colorScheme = if (isSystemInDarkTheme()) hadithDarkColorScheme else hadithLightColorScheme
 
@@ -129,6 +132,6 @@ private fun Typography.withRoleFonts(
 private fun TextStyle.upscale(scale: Float): TextStyle {
     return copy(
         fontSize = fontSize * scale,
-        lineHeight = lineHeight * scale,
+//        lineHeight = lineHeight * scale,
     )
 }
