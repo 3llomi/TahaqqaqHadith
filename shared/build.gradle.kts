@@ -48,6 +48,8 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
 
             implementation(libs.sqldelight.android.driver)
+            api(libs.koin.android)
+
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

@@ -5,3 +5,21 @@ page INTEGER NOT NULL,
 timestamp INTEGER NOT NULL,
 seen INTEGER NOT NULL DEFAULT 0
 );
+
+pageNumbers:
+SELECT DISTINCT page FROM fakeHadith_Entity;
+
+insertOrIgnore:
+INSERT OR IGNORE INTO
+fakeHadith_Entity(id, text, page, timestamp, seen)
+VALUES (?, ?, ?, ?, ?);
+
+setHadithSeen:
+UPDATE fakeHadith_Entity SET seen=? WHERE id=?;
+
+getRandomNotSeenHadith:
+SELECT * FROM fakeHadith_Entity
+WHERE seen = 0
+ORDER BY random()
+LIMIT 1;
+

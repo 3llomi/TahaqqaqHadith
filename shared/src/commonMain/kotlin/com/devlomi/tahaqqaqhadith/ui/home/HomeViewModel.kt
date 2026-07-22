@@ -2,7 +2,10 @@ package com.devlomi.tahaqqaqhadith.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import com.devlomi.tahaqqaqhadith.data.HadithQueryPlaceholderDataSource
+import com.devlomi.tahaqqaqhadith.usecase.FetchFakeHadiths
+import com.devlomi.tahaqqaqhadith.usecase.GetFakeHadithFromCache
 import com.devlomi.tahaqqaqhadith.usecase.SearchForHadith
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,14 +13,37 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class HomeViewModel(private val searchUseCase: SearchForHadith) : ViewModel() {
+class HomeViewModel(
+    private val searchUseCase: SearchForHadith,
+    private val fetchFakeHadiths: FetchFakeHadiths,
+    private val getLocalFakeHadithFromCache: GetFakeHadithFromCache,
+) : ViewModel() {
     private val _state = MutableStateFlow<HomeState>(HomeState())
     val state: StateFlow<HomeState> get() = _state.asStateFlow()
 
     init {
-        val randomInt = 0..HadithQueryPlaceholderDataSource.placeholders.size
+        val randomInt = 0..<HadithQueryPlaceholderDataSource.placeholders.size
         val randomItem = HadithQueryPlaceholderDataSource.placeholders[randomInt.random()]
         _state.update { it.copy(queryPlaceholder = randomItem) }
+
+        viewModelScope.launch {
+            fetchFakeHadiths.execute().collect{}
+        }
+
+        viewModelScope.launch {
+            getLocalFakeHadithFromCache.execute().collect { result ->
+                _state.value = _state.value.copy(isLoading = result.isLoading())
+                if (result.isSuccess() && result.data != null) {
+                    _state.update { it.copy(fakeHadith = result.data) }
+                }
+                if (result.isError() && result.message != null) {
+                    Logger.e {
+                        "Error fetching fake hadith from cache: ${result.message.description}"
+                    }
+                    //TODO HANDLE ERROR
+                }
+            }
+        }
     }
 
     fun onEvent(event: HomeEvents) {

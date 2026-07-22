@@ -10,7 +10,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.devlomi.tahaqqaqhadith.di.cacheModule
 import com.devlomi.tahaqqaqhadith.di.networkModule
+import com.devlomi.tahaqqaqhadith.di.platformModule
 import com.devlomi.tahaqqaqhadith.di.useCaseModule
 import com.devlomi.tahaqqaqhadith.di.viewModelModule
 import com.devlomi.tahaqqaqhadith.ui.home.HomeScreen
@@ -30,7 +32,7 @@ fun App() {
                 koinConfiguration {
                     koinApplication {
                         modules(
-                            networkModule(), useCaseModule(), viewModelModule()
+                            networkModule(), useCaseModule(), viewModelModule(), cacheModule(),platformModule
                         )
                     }
                 }, content = {

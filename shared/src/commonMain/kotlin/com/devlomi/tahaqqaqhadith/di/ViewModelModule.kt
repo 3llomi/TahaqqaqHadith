@@ -6,6 +6,6 @@ import org.koin.dsl.module
 
 fun viewModelModule() = module {
     viewModel<HomeViewModel> {
-        HomeViewModel(get())
+        HomeViewModel(get(),get(),get())
     }
 }

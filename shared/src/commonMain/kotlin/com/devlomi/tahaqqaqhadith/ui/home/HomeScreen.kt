@@ -74,7 +74,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.Launch
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.ui.platform.LocalUriHandler
+import com.devlomi.tahaqqahhadith.datasource.cache.FakeHadith_Entity
 import com.devlomi.tahaqqaqhadith.common.util.Util
 import com.devlomi.tahaqqaqhadith.data.HadithQueryPlaceholderDataSource
 import com.devlomi.tahaqqaqhadith.data.model.HadithEntry
@@ -170,8 +172,14 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                         }
                     }
 
+                    state.fakeHadith != null -> {
+                        item {
+                            FakeHadithCard(state.fakeHadith!!)
+                        }
+                    }
+
                 }
-                item{
+                item {
                     // Show More Button
                     if (state.data?.entries?.isNotEmpty() == true && state.submittedSearchQuery.isNotEmpty()) {
                         ShowMoreResultsButton(
@@ -184,14 +192,14 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                 }
             }
 
-            Text(" جميع الأحاديث مُقدمة من موقع الدرر السُنية ولا نملك أي حقوق للمحتوى.",
+            Text(
+                "جميع الأحاديث مُقدمة من موقع الدرر السُنية ولا نملك أي حقوق للمحتوى.",
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Right
             )
             Spacer(modifier = Modifier.height(8.dp))
-
 
 
         }
@@ -858,17 +866,57 @@ private fun HadithSearchResult?.orEmptyGroupedEntries(): List<HadithGroup> {
 }
 
 @Composable
-private fun HintCard(message: String) {
+private fun FakeHadithCard(fakeHadith: FakeHadith_Entity) {
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        //TODO USE THEME COLOR INSTEAD
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F5EC)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
     ) {
         Text(
-            text = message,
-            color = MaterialTheme.colorScheme.onSurface,
+            text = "حديث مكذوب منتشر",
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(14.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.error)
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(imageVector = Icons.Filled.Error, contentDescription = null)
+                Text(
+                    text = "مكذوب",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = fakeHadith.text,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp)
+        )
+
+        Text(
+            text = "درجة الحديث",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }

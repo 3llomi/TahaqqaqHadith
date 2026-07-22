@@ -3,23 +3,24 @@ package com.devlomi.tahaqqaqhadith.usecase
 import com.devlomi.tahaqqaqhadith.common.DataState
 import com.devlomi.tahaqqaqhadith.common.GenericMessageInfo
 import com.devlomi.tahaqqaqhadith.common.UIComponentType
-import com.devlomi.tahaqqaqhadith.data.network.HadithService
+import com.devlomi.tahaqqaqhadith.data.cache.FakeHadithCache
 import kotlinx.coroutines.flow.flow
 
-class SearchForHadith(private val hadithService: HadithService) {
-    fun execute(query: String) = flow {
+class GetFakeHadithFromCache(
+    private val fakeHadithCache: FakeHadithCache
+) {
+
+
+    fun execute() = flow {
         emit(DataState.loading())
         try {
-            val result = hadithService.search(query)
-            val sortedResult = result.copy(
-                entries = result.entries.sortedByDescending { it.assessment.score }
-            )
-            emit(DataState.data(data = sortedResult))
+            val hadith = fakeHadithCache.getRandomNotSeenHadith()
+            emit(DataState.data(data = hadith))
         } catch (e: Exception) {
             emit(
                 DataState.error(
                     message = GenericMessageInfo(
-                        id = "search_error",
+                        id = "search_error",//TODO HANDLE ERRORS
                         title = "Search Error",
                         description = e.message ?: "Unknown error",
                         uiComponentType = UIComponentType.Toast

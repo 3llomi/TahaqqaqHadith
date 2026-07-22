@@ -1,0 +1,14 @@
+package com.devlomi.tahaqqaqhadith.di
+
+import app.cash.sqldelight.db.SqlDriver
+import com.devlomi.tahaqqaqhadith.DriverFactory
+import com.devlomi.tahaqqaqhadith.datasource.cache.Database
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.module.Module
+import org.koin.dsl.module
+
+actual val platformModule = module {
+    single<SqlDriver>{
+        DriverFactory(androidContext()).createDriver()
+    }
+}
