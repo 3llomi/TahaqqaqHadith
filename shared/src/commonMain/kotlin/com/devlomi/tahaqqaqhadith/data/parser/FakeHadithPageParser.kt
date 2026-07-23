@@ -1,5 +1,6 @@
 package com.devlomi.tahaqqaqhadith.data.parser
 
+import co.touchlab.kermit.Logger
 import com.devlomi.tahaqqaqhadith.data.model.FakeHadith
 import com.devlomi.tahaqqaqhadith.data.model.FakeHadithPageResult
 
@@ -9,9 +10,16 @@ class FakeHadithPageParser {
         val sourceUrl = "https://dorar.net/fake-hadith?page=$page"
         val markdownBody = rawContent.substringAfter("Markdown Content:", rawContent)
 
-        val items = parseMarkdownStyle(markdownBody).ifEmpty {
+        val markdownItems = parseMarkdownStyle(markdownBody)
+        val htmlItems = parseRawHtmlArticles(rawContent).ifEmpty {
             parseHtmlLike(rawContent)
         }
+
+        val items = chooseBestItems(
+            rawContent = rawContent,
+            markdownItems = markdownItems,
+            htmlItems = htmlItems
+        )
 
         return FakeHadithPageResult(
             page = page,
@@ -21,7 +29,7 @@ class FakeHadithPageParser {
     }
 
     private fun parseMarkdownStyle(markdown: String): List<FakeHadith> {
-        val headingRegex = Regex("""(?m)^#{3,6}\s*(\d+)\s*-\s*(.+?)\s*$""")
+        val headingRegex = Regex("""(?m)^#{3,6}\s*(\d+)\s*-\s*حديث\s*:\s*(.+?)\s*$""")
         val matches = headingRegex.findAll(markdown).toList()
         if (matches.isEmpty()) return emptyList()
 
@@ -38,6 +46,9 @@ class FakeHadithPageParser {
             val sahihAltUrl = sahihAlternativeRegex.find(block)?.groupValues?.getOrNull(1)
             val hadithUrl = emptyLinkToHadithRegex.find(block)?.groupValues?.getOrNull(1)
 
+            Logger.d {
+                "Parsed FakeHadith - Number: $number, Heading: $heading, Grade: $grade, SahihAltUrl: $sahihAltUrl, HadithUrl: $hadithUrl"
+            }
             val extraLines = block
                 .lineSequence()
                 .drop(1)
@@ -57,6 +68,48 @@ class FakeHadithPageParser {
                 number = number,
                 hadith = heading,
                 text = text,
+                grade = grade,
+                sahihAlternativeUrl = sahihAltUrl,
+                hadithUrl = hadithUrl
+            )
+        }
+    }
+
+    private fun parseRawHtmlArticles(html: String): List<FakeHadith> {
+        val articleMatches = articleRegex.findAll(html).toList()
+        if (articleMatches.isEmpty()) return emptyList()
+
+        return articleMatches.mapNotNull { articleMatch ->
+            val article = articleMatch.groupValues[1]
+            val hadithHtml = hadithH5Regex.find(article)?.groupValues?.getOrNull(1) ?: return@mapNotNull null
+            val rawHadith = normalizeText(stripHtml(hadithHtml))
+
+            val number = numberRegex.find(rawHadith)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                ?: dataPkRegex.find(article)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                ?: return@mapNotNull null
+
+            val hadith = normalizeText(
+                rawHadith
+                    .replace(leadingHadithPrefixRegex, "")
+                    .trim()
+            )
+
+            if (!isLikelyHadithText(hadith)) return@mapNotNull null
+
+            val grade = degreeSpanRegex.find(article)?.groupValues?.getOrNull(1)
+                ?.let(::stripHtml)
+                ?.let(::normalizeText)
+
+            Logger.d {
+                "Parsed FakeHadith - Number: $number, Hadith: $hadith, Grade: $grade"
+            }
+            val sahihAltUrl = htmlSahihAlternativeRegex.find(article)?.groupValues?.getOrNull(1)
+            val hadithUrl = htmlHadithUrlRegex(number).find(article)?.groupValues?.getOrNull(1)
+
+            FakeHadith(
+                number = number,
+                hadith = hadith,
+                text = hadith,
                 grade = grade,
                 sahihAlternativeUrl = sahihAltUrl,
                 hadithUrl = hadithUrl
@@ -86,6 +139,7 @@ class FakeHadithPageParser {
             val rawHadithText = block
                 .substringBefore("الدرجة")
                 .substringBefore("الصحيح البديل")
+            Logger.d { "Parsing FakeHadith - Number: $number, RawHadithText: $rawHadithText, Grade: $grade" }
             val hadith = rawHadithBodyRegex.find(rawHadithText)?.groupValues?.getOrNull(1)
                 ?.let(::normalizeText)
                 ?: normalizeText(stripHtml(rawHadithText))
@@ -104,6 +158,31 @@ class FakeHadithPageParser {
                 hadithUrl = hadithUrl
             )
         }.toList()
+    }
+
+    private fun chooseBestItems(
+        rawContent: String,
+        markdownItems: List<FakeHadith>,
+        htmlItems: List<FakeHadith>
+    ): List<FakeHadith> {
+        val looksLikeRawHtml = "<html" in rawContent.lowercase() || "<article" in rawContent.lowercase()
+        val looksLikeMarkdown = "Markdown Content:" in rawContent || rawContent.contains("#####")
+
+        if (looksLikeRawHtml && htmlItems.isNotEmpty()) return htmlItems
+        if (looksLikeMarkdown && markdownItems.isNotEmpty()) return markdownItems
+
+        val markdownScore = qualityScore(markdownItems)
+        val htmlScore = qualityScore(htmlItems)
+
+        return if (htmlScore >= markdownScore) htmlItems else markdownItems
+    }
+
+    private fun qualityScore(items: List<FakeHadith>): Int {
+        if (items.isEmpty()) return 0
+        val withGrade = items.count { !it.grade.isNullOrBlank() }
+        val withUrl = items.count { it.hadithUrl?.contains("/fake-hadith/") == true }
+        val withAlt = items.count { it.sahihAlternativeUrl?.contains("alts=1") == true }
+        return (items.size * 4) + (withGrade * 2) + withUrl + withAlt
     }
 
     private fun cleanTitle(value: String): String {
@@ -129,6 +208,9 @@ class FakeHadithPageParser {
 
     private fun stripHtml(text: String): String {
         return text
+            .replace("<br>", "\n")
+            .replace("<br/>", "\n")
+            .replace("<br />", "\n")
             .replace(tagRegex, " ")
             .replace("&nbsp;", " ")
             .replace("&quot;", "\"")
@@ -154,6 +236,12 @@ class FakeHadithPageParser {
         private val emptyLinkToHadithRegex = Regex("""\[\]\((https?://dorar\.net/fake-hadith/\d+[^)]*)\)""")
 
         private val htmlGradeRegex = Regex("""الدرجة\s*:\s*(.*?)(?:<|$)""", RegexOption.DOT_MATCHES_ALL)
+        private val articleRegex = Regex("""(?is)<article\b[^>]*>(.*?)</article>""")
+        private val hadithH5Regex = Regex("""(?is)<h5\b[^>]*data-name\s*=\s*"hadith"[^>]*>(.*?)</h5>""")
+        private val degreeSpanRegex = Regex("""(?is)<span\b[^>]*data-name\s*=\s*"degree"[^>]*>(.*?)</span>""")
+        private val numberRegex = Regex("""^(\d{1,4})\s*-""")
+        private val dataPkRegex = Regex("""data-pk\s*=\s*"(\d{1,4})""", RegexOption.IGNORE_CASE)
+        private val leadingHadithPrefixRegex = Regex("""^\d{1,4}\s*-\s*(?:حديث\s*:\s*)?""")
         private val htmlSahihAlternativeRegex = Regex(
             """href\s*=\s*"([^"]+)"[^>]*>\s*الصحيح البديل""",
             RegexOption.IGNORE_CASE
@@ -181,6 +269,8 @@ class FakeHadithPageParser {
         private val tagRegex = Regex("<[^>]+>")
     }
 }
+
+
 
 
 

@@ -45,6 +45,21 @@ class SharedCommonTest {
         assertTrue(result.items[1].text.contains("الجنة تحت أقدام الأمهات"))
     }
 
+    @Test
+    fun parsesFakeHadithRawHtmlArticles() {
+        val result = FakeHadithPageParser().parse(page = 3, rawContent = fakeHadithPageHtml)
+
+        assertEquals(2, result.items.size)
+        assertEquals(41, result.items[0].number)
+        assertTrue(result.items[0].hadith.contains("البلاء موكل بالمنطق"))
+        assertTrue(result.items[0].grade?.contains("لا يصح") == true)
+        assertEquals("https://dorar.net/fake-hadith/41?alts=1", result.items[0].sahihAlternativeUrl)
+
+        assertEquals(42, result.items[1].number)
+        assertTrue(result.items[1].hadith.contains("التمس لأخيك"))
+        assertTrue(result.items[1].grade?.contains("الحديث بهذا اللفظ") == true)
+    }
+
     private val sampleJson = """
         {
           "ahadith": {
@@ -67,5 +82,36 @@ class SharedCommonTest {
          وفي لفظ: ((الجنة تحت أقدام الأمهات، مَنْ شِئن أدخلن، ومَن شِئن أخرجن!))
 
         [](https://dorar.net/fake-hadith/43)[](https://dorar.net/fake-hadith/43 "عرض الحديث")
+    """.trimIndent()
+
+    private val fakeHadithPageHtml = """
+        <html><body>
+        <article class="border-bottom py-4">
+            <h5 class="h5-responsive edit" data-name="hadith" data-type="textarea" data-pk="41">
+                41 - حديث: ((البلاء موكل بالمنطق)).
+            </h5>
+            <div class="d-block mb-2">
+                <strong class="px-2">الدرجة:
+                    <span class="primary-text-color edit" data-name="degree" data-type="text" data-pk="41">لا يصح، وصحح معناه ابن القيم في «تحفة المودود».</span>
+                </strong>
+                <strong class="px-2">
+                    <span class="text-danger">|</span>
+                    <a class="mr-2 text-info" target="_blank" href="https://dorar.net/fake-hadith/41?alts=1">الصحيح البديل</a>
+                </strong>
+            </div>
+            <a href="https://dorar.net/fake-hadith/41" title="عرض الحديث"></a>
+        </article>
+        <article class="border-bottom py-4">
+            <h5 class="h5-responsive edit" data-name="hadith" data-type="textarea" data-pk="42">
+                42 - حديث: ((التمس لأخيك بِضعًا وسبعين عُذرًا)).
+            </h5>
+            <div class="d-block mb-2">
+                <strong class="px-2">الدرجة:
+                    <span class="primary-text-color edit" data-name="degree" data-type="text" data-pk="42">الحديث بهذا اللفظ لم نجدْه.</span>
+                </strong>
+            </div>
+            <a href="https://dorar.net/fake-hadith/42" title="عرض الحديث"></a>
+        </article>
+        </body></html>
     """.trimIndent()
 }

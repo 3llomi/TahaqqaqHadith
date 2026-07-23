@@ -5,6 +5,7 @@ import com.devlomi.tahaqqaqhadith.common.DataState
 import com.devlomi.tahaqqaqhadith.common.GenericMessageInfo
 import com.devlomi.tahaqqaqhadith.common.UIComponentType
 import com.devlomi.tahaqqaqhadith.data.cache.FakeHadithCache
+import com.devlomi.tahaqqaqhadith.data.model.toEntityList
 import com.devlomi.tahaqqaqhadith.data.network.HadithService
 import kotlinx.coroutines.flow.flow
 
@@ -14,6 +15,7 @@ class FetchFakeHadiths(
 ) {
     companion object {
         private const val MAX_PAGE = 90
+        private const val MAX_HADITH_LENGTH = 600
     }
 
     fun execute() = flow {
@@ -21,6 +23,10 @@ class FetchFakeHadiths(
         val randomPage = getRandomPage()
         try {
             val result = hadithService.getFakeHadiths(randomPage)
+            val filteredResult =
+                result.copy(items = result.items.filter { it.text.length < MAX_HADITH_LENGTH })
+            val entities = filteredResult.toEntityList()
+            fakeHadithCache.bulkInsertOrIgnore(entities)
             emit(DataState.data(data = result))
 
         } catch (e: Exception) {

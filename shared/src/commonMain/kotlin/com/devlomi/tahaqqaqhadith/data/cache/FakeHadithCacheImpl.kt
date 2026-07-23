@@ -10,6 +10,8 @@ class FakeHadithCacheImpl(private val fakeHadithQueries: FakeHadithQueries) : Fa
             id = fakeHadith.id,
             text = fakeHadith.text,
             page = fakeHadith.page,
+            grade = fakeHadith.grade,
+            correctHadithUrl = fakeHadith.correctHadithUrl,
             timestamp = fakeHadith.timestamp,
             seen = fakeHadith.seen
         )

@@ -132,6 +132,6 @@ private fun Typography.withRoleFonts(
 private fun TextStyle.upscale(scale: Float): TextStyle {
     return copy(
         fontSize = fontSize * scale,
-//        lineHeight = lineHeight * scale,
+        lineHeight = lineHeight * scale,
     )
 }

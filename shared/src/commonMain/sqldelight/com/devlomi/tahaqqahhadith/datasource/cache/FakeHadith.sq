@@ -1,6 +1,8 @@
 CREATE TABLE fakeHadith_Entity(
 id INTEGER PRIMARY KEY NOT NULL,
 text TEXT NOT NULL,
+correctHadithUrl TEXT,
+grade TEXT,
 page INTEGER NOT NULL,
 timestamp INTEGER NOT NULL,
 seen INTEGER NOT NULL DEFAULT 0
@@ -11,8 +13,8 @@ SELECT DISTINCT page FROM fakeHadith_Entity;
 
 insertOrIgnore:
 INSERT OR IGNORE INTO
-fakeHadith_Entity(id, text, page, timestamp, seen)
-VALUES (?, ?, ?, ?, ?);
+fakeHadith_Entity(id, text, page,correctHadithUrl,grade, timestamp, seen)
+VALUES (?, ?, ?, ?, ?,?,?);
 
 setHadithSeen:
 UPDATE fakeHadith_Entity SET seen=? WHERE id=?;

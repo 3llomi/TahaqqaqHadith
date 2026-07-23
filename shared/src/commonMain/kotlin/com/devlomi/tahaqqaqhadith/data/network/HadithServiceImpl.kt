@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.request
 
 class HadithServiceImpl(
     private val httpClient: HttpClient,
@@ -27,10 +28,12 @@ class HadithServiceImpl(
     }
 
     override suspend fun getFakeHadiths(page: Int): FakeHadithPageResult {
-        val rawHtml = httpClient.get("fake-hadith") {
+        val request = httpClient.get("fake-hadith") {
             parameter("page", page.toString())
-        }.bodyAsText()
-
+        }
+        Logger.d { "RequestURL ${request.request.url}" }
+        val rawHtml = request.bodyAsText()
+        Logger.d { "Fetching fake hadiths for page $page -" }
         val parsed = fakeHadithParser.parse(page = page, rawContent = rawHtml)
         if (parsed.isHighConfidence()) return parsed
 
@@ -48,12 +51,16 @@ class HadithServiceImpl(
     }
 
     private fun FakeHadithPageResult.isHighConfidence(): Boolean {
-        if (items.isEmpty()) return false
+        if (items.isEmpty()) {
+            Logger.d { "Items is empty" }
+            return false
+        }
 
         val validLinks = items.count { it.hadithUrl?.contains("/fake-hadith/") == true }
         val validGrades = items.count { !it.grade.isNullOrBlank() }
         val validBodies = items.count { it.hadith.length >= 12 }
 
+        Logger.d { "Valid Links ${validLinks} Valid Grades $validGrades validBodies $validBodies" }
         // A trustworthy parse should have mostly plausible hadith text and some page links/grades.
         return validBodies >= (items.size * 0.8) && (validLinks > 0 || validGrades > 0)
     }
