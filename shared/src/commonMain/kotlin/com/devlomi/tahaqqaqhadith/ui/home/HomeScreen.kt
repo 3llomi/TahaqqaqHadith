@@ -32,14 +32,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -76,20 +73,20 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.Launch
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.FileCopy
+import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalUriHandler
+import co.touchlab.kermit.Logger
 import com.devlomi.tahaqqahhadith.datasource.cache.FakeHadith_Entity
 import com.devlomi.tahaqqaqhadith.BASE_URL
 import com.devlomi.tahaqqaqhadith.common.util.Util
-import com.devlomi.tahaqqaqhadith.data.HadithQueryPlaceholderDataSource
 import com.devlomi.tahaqqaqhadith.data.model.HadithEntry
 import com.devlomi.tahaqqaqhadith.data.model.HadithSearchResult
 import com.devlomi.tahaqqaqhadith.data.model.LegitimacyAssessment
@@ -108,7 +105,6 @@ import myapplication.shared.generated.resources.ic_question_mark
 import myapplication.shared.generated.resources.ic_verify
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
-import kotlin.time.Clock
 
 @Composable
 fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
@@ -116,8 +112,8 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
     val uriHandler = LocalUriHandler.current
 
     //TODO DATA SHOULD BE FILTERED AND GROUPED FROM VM?
-    val groupedEntries = remember(state.data?.entries) {
-        state.data.orEmptyGroupedEntries()
+    val groupedEntries = remember(state.searchResult) {
+        state.searchResult?.data.orEmptyGroupedEntries()
     }
     var isVisible by remember { mutableStateOf(true) }
 
@@ -134,7 +130,7 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-//            AppToolbar()
+
 
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -146,42 +142,49 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                 ),
                 modifier = Modifier.weight(1f)
             ) {
+
                 item {
-                    //TODO IMPROVE THIS ANIMATION, AND MAKE SURE SEARCH INPUT IS NOT TIED TO HERO SECTION
-                    if (state.data == null ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateContentSize(animationSpec = tween(durationMillis = 220))
+                    ) {
                         AnimatedVisibility(
-                            visible = isVisible,
-                            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                            visible = state.searchResult == null && isVisible,
+                            exit = shrinkVertically(
+                                animationSpec = tween(durationMillis = 220),
+                                shrinkTowards = Alignment.Top
+                            ) + fadeOut(animationSpec = tween(durationMillis = 220))
                         ) {
-                            HeroSearchSection(
-                                query = state.query,
-                                placeholder = state.queryPlaceholder,
-                                onQueryChange = { onEvent(HomeEvents.OnQueryTextChange(it)) },
-                                onSearch = {
-                                    isVisible = false
-                                    onEvent(HomeEvents.Search)
-                                }
-                            )
+
+                            HeroSearchSection()
                         }
 
-                    } else {
+
                         SearchInputBar(
                             query = state.query,
                             placeholder = state.queryPlaceholder,
                             onQueryChange = { onEvent(HomeEvents.OnQueryTextChange(it)) },
-                            onSearch = { onEvent(HomeEvents.Search) }
+                            onSearch = {
+                                isVisible = false
+                                onEvent(HomeEvents.Search)
+                            }
                         )
                     }
                 }
-
                 when {
-                    state.isLoading -> {
+                    state.searchResult?.isLoading() == true -> {
                         item {
                             ShimmerLoadingList()
                         }
                     }
+                    state.searchResult?.isError() == true ->{
+                        item{
+                            ConnectionErrorHeader()
+                        }
+                    }
 
-                    state.data != null -> {
+                    state.searchResult?.isSuccess() == true && state.searchResult?.data != null -> {
                         if (groupedEntries.isEmpty()) {
                             item {
                                 NoResultsHeader()
@@ -202,30 +205,45 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                             }
                         }
                     }
+                }
 
-                    state.fakeHadith != null -> {
-                        item {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            FakeHadithCard(
-                                state.fakeHadith!!,
-                                onCorrectHadithClick = {
-                                    val fakeHadith = state.fakeHadith ?: return@FakeHadithCard
-                                    val url = fakeHadith.correctHadithUrl ?: return@FakeHadithCard
-                                    uriHandler.openUri(url)
-                                }, onVerifySourceClick = {
-                                    val fakeHadith = state.fakeHadith ?: return@FakeHadithCard
-                                    val url = "${BASE_URL}fake-hadith/${
-                                        fakeHadith.id.toString().encodeURLParameter()
-                                    }"
-                                    uriHandler.openUri(url)
-                                })
+                if (state.searchResult == null) {
+                    when {
+                        state.fakeHadith?.isLoading() == true -> {
+                            item {
+                                Logger.d {
+                                    "Fake Hadith is loading..."
+                                }
+                                ShimmerLoadingList(1)
+                            }
+                        }
+
+                        state.fakeHadith?.isSuccess() == true && state.fakeHadith?.data != null -> {
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                FakeHadithCard(
+                                    state.fakeHadith!!.data!!,
+                                    onCorrectHadithClick = {
+                                        val fakeHadith =
+                                            state.fakeHadith?.data ?: return@FakeHadithCard
+                                        val url =
+                                            fakeHadith.correctHadithUrl ?: return@FakeHadithCard
+                                        uriHandler.openUri(url)
+                                    }, onVerifySourceClick = {
+                                        val fakeHadith =
+                                            state.fakeHadith?.data ?: return@FakeHadithCard
+                                        val url = "${BASE_URL}fake-hadith/${
+                                            fakeHadith.id.toString().encodeURLParameter()
+                                        }"
+                                        uriHandler.openUri(url)
+                                    })
+                            }
                         }
                     }
-
                 }
                 item {
                     // Show More Button
-                    if (state.data?.entries?.isNotEmpty() == true && state.submittedSearchQuery.isNotEmpty()) {
+                    if (state.searchResult?.data?.entries?.isNotEmpty() == true && state.submittedSearchQuery.isNotEmpty()) {
                         ShowMoreResultsButton(
                             query = state.submittedSearchQuery,
                             onOpenUrl = { url ->
@@ -234,16 +252,18 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                         )
                     }
                 }
+                item {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        "جميع الأحاديث مُقدمة من موقع الدرر السُنية ولا نملك أي حقوق للمحتوى.",
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Right
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
-
-            Text(
-                "جميع الأحاديث مُقدمة من موقع الدرر السُنية ولا نملك أي حقوق للمحتوى.",
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                textAlign = TextAlign.Right
-            )
-            Spacer(modifier = Modifier.height(8.dp))
 
 
         }
@@ -275,12 +295,7 @@ private fun AppToolbar() {
 }
 
 @Composable
-private fun HeroSearchSection(
-    query: String,
-    placeholder: String,
-    onQueryChange: (String) -> Unit,
-    onSearch: () -> Unit,
-) {
+private fun HeroSearchSection() {
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -319,14 +334,6 @@ private fun HeroSearchSection(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            //TODO WHY WE HAVE TWO SEARCH BARS? MAYBE REMOVE ONE
-            SearchInputBar(
-                query = query,
-                placeholder = placeholder,
-                onQueryChange = onQueryChange,
-                onSearch = onSearch,
-            )
         }
     }
 }
@@ -695,26 +702,6 @@ private fun ScoreExplanationDialog(
     }
 }
 
-@Composable
-private fun ScoreCriteriaItem(text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Box(
-            modifier = Modifier
-                .size(4.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-        )
-    }
-}
 
 @Composable
 private fun StatusPill(text: String, state: LegitimacyState) {
@@ -1087,9 +1074,9 @@ fun FakeHadithCardPreview() {
 }
 
 @Composable
-private fun ShimmerLoadingList() {
+private fun ShimmerLoadingList(itemCount: Int = 3) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        repeat(3) {
+        repeat(itemCount) {
             ShimmerGroupCard()
         }
     }
@@ -1333,7 +1320,7 @@ private fun NoResultsHeader() {
         ) {
             Image(
                 painterResource(Res.drawable.ic_no_search_results),
-                modifier = Modifier.padding(8.dp),
+                modifier = Modifier.padding(16.dp),
                 contentDescription = null,
             )
         }
@@ -1347,6 +1334,43 @@ private fun NoResultsHeader() {
         )
         Text(
             "قد يكون الحديث الذي تبحث عنه غير موجود أو غير صحيح",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+@Preview
+private fun ConnectionErrorHeader() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(114.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.CloudOff,
+                modifier = Modifier.fillMaxSize().alpha(0.65f).padding(16.dp),
+                contentDescription = null,
+            )
+        }
+
+
+        Text(
+            "حدث خطأ في الاتصال",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            "تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface
         )
