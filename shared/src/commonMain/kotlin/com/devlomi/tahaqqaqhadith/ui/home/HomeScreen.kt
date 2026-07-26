@@ -88,6 +88,7 @@ import com.devlomi.tahaqqahhadith.datasource.cache.FakeHadith_Entity
 import com.devlomi.tahaqqaqhadith.BASE_URL
 import com.devlomi.tahaqqaqhadith.common.util.Util
 import com.devlomi.tahaqqaqhadith.data.model.HadithEntry
+import com.devlomi.tahaqqaqhadith.data.model.HadithGroup
 import com.devlomi.tahaqqaqhadith.data.model.HadithSearchResult
 import com.devlomi.tahaqqaqhadith.data.model.LegitimacyAssessment
 import com.devlomi.tahaqqaqhadith.data.model.LegitimacyState
@@ -111,10 +112,7 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
     var expandedHadithKeys by remember { mutableStateOf(setOf<String>()) }
     val uriHandler = LocalUriHandler.current
 
-    //TODO DATA SHOULD BE FILTERED AND GROUPED FROM VM?
-    val groupedEntries = remember(state.searchResult) {
-        state.searchResult?.data.orEmptyGroupedEntries()
-    }
+    val groupedEntries = state.searchResult?.data
     var isVisible by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -122,151 +120,154 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
 //        onEvent(HomeEvents.Search)
     }
 
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
         ) {
-
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(
-                    bottom = 16.dp,
-                    top = 16.dp,
-                    start = 16.dp,
-                    end = 16.dp
-                ),
-                modifier = Modifier.weight(1f)
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
 
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(animationSpec = tween(durationMillis = 220))
-                    ) {
-                        AnimatedVisibility(
-                            visible = state.searchResult == null && isVisible,
-                            exit = shrinkVertically(
-                                animationSpec = tween(durationMillis = 220),
-                                shrinkTowards = Alignment.Top
-                            ) + fadeOut(animationSpec = tween(durationMillis = 220))
+
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(
+                        bottom = 16.dp,
+                        top = 16.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateContentSize(animationSpec = tween(durationMillis = 220))
                         ) {
+                            AnimatedVisibility(
+                                visible = state.searchResult == null && isVisible,
+                                exit = shrinkVertically(
+                                    animationSpec = tween(durationMillis = 220),
+                                    shrinkTowards = Alignment.Top
+                                ) + fadeOut(animationSpec = tween(durationMillis = 220))
+                            ) {
 
-                            HeroSearchSection()
-                        }
-
-
-                        SearchInputBar(
-                            query = state.query,
-                            placeholder = state.queryPlaceholder,
-                            onQueryChange = { onEvent(HomeEvents.OnQueryTextChange(it)) },
-                            onSearch = {
-                                isVisible = false
-                                onEvent(HomeEvents.Search)
+                                HeroSearchSection()
                             }
-                        )
-                    }
-                }
-                when {
-                    state.searchResult?.isLoading() == true -> {
-                        item {
-                            ShimmerLoadingList()
-                        }
-                    }
-                    state.searchResult?.isError() == true ->{
-                        item{
-                            ConnectionErrorHeader()
-                        }
-                    }
 
-                    state.searchResult?.isSuccess() == true && state.searchResult?.data != null -> {
-                        if (groupedEntries.isEmpty()) {
+
+                            SearchInputBar(
+                                query = state.query,
+                                placeholder = state.queryPlaceholder,
+                                onQueryChange = { onEvent(HomeEvents.OnQueryTextChange(it)) },
+                                onSearch = {
+                                    isVisible = false
+                                    onEvent(HomeEvents.Search)
+                                }
+                            )
+                        }
+                    }
+                    when {
+                        state.searchResult?.isLoading() == true -> {
                             item {
-                                NoResultsHeader()
+                                ShimmerLoadingList()
                             }
-                        } else {
-                            items(groupedEntries, key = { it.key }) { group ->
-                                HadithGroupCard(
-                                    group = group,
-                                    isExpanded = group.key in expandedHadithKeys,
-                                    onToggle = {
-                                        expandedHadithKeys = if (group.key in expandedHadithKeys) {
-                                            expandedHadithKeys - group.key
-                                        } else {
-                                            expandedHadithKeys + group.key
+                        }
+
+                        state.searchResult?.isError() == true -> {
+                            item {
+                                ConnectionErrorHeader()
+                            }
+                        }
+
+                        state.searchResult?.isSuccess() == true && state.searchResult?.data != null -> {
+                            if (groupedEntries?.isEmpty() == true) {
+                                item {
+                                    NoResultsHeader()
+                                }
+                            } else if(groupedEntries != null) {
+                                items(groupedEntries, key = { it.key }) { group ->
+                                    HadithGroupCard(
+                                        group = group,
+                                        isExpanded = group.key in expandedHadithKeys,
+                                        onToggle = {
+                                            expandedHadithKeys =
+                                                if (group.key in expandedHadithKeys) {
+                                                    expandedHadithKeys - group.key
+                                                } else {
+                                                    expandedHadithKeys + group.key
+                                                }
                                         }
+                                    )
+                                }
+                            }
+                            item {
+                                // Show More Button
+                                if (groupedEntries?.isNotEmpty() == true && state.submittedSearchQuery.isNotEmpty()) {
+                                ShowMoreResultsButton(
+                                    query = state.submittedSearchQuery,
+                                    onOpenUrl = { url ->
+                                        uriHandler.openUri(url)
                                     }
                                 )
                             }
+                            }
                         }
                     }
-                }
 
-                if (state.searchResult == null) {
-                    when {
-                        state.fakeHadith?.isLoading() == true -> {
-                            item {
-                                Logger.d {
-                                    "Fake Hadith is loading..."
+                    if (state.searchResult == null) {
+                        when {
+                            state.fakeHadith?.isLoading() == true -> {
+                                item {
+                                    Logger.d {
+                                        "Fake Hadith is loading..."
+                                    }
+                                    ShimmerLoadingList(1)
                                 }
-                                ShimmerLoadingList(1)
                             }
-                        }
 
-                        state.fakeHadith?.isSuccess() == true && state.fakeHadith?.data != null -> {
-                            item {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                FakeHadithCard(
-                                    state.fakeHadith!!.data!!,
-                                    onCorrectHadithClick = {
-                                        val fakeHadith =
-                                            state.fakeHadith?.data ?: return@FakeHadithCard
-                                        val url =
-                                            fakeHadith.correctHadithUrl ?: return@FakeHadithCard
-                                        uriHandler.openUri(url)
-                                    }, onVerifySourceClick = {
-                                        val fakeHadith =
-                                            state.fakeHadith?.data ?: return@FakeHadithCard
-                                        val url = "${BASE_URL}fake-hadith/${
-                                            fakeHadith.id.toString().encodeURLParameter()
-                                        }"
-                                        uriHandler.openUri(url)
-                                    })
+                            state.fakeHadith?.isSuccess() == true && state.fakeHadith?.data != null -> {
+                                item {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    FakeHadithCard(
+                                        state.fakeHadith!!.data!!,
+                                        onCorrectHadithClick = {
+                                            val fakeHadith =
+                                                state.fakeHadith?.data ?: return@FakeHadithCard
+                                            val url =
+                                                fakeHadith.correctHadithUrl ?: return@FakeHadithCard
+                                            uriHandler.openUri(url)
+                                        }, onVerifySourceClick = {
+                                            val fakeHadith =
+                                                state.fakeHadith?.data ?: return@FakeHadithCard
+                                            val url = "${BASE_URL}fake-hadith/${
+                                                fakeHadith.id.toString().encodeURLParameter()
+                                            }"
+                                            uriHandler.openUri(url)
+                                        })
+                                }
                             }
                         }
                     }
-                }
-                item {
-                    // Show More Button
-                    if (state.searchResult?.data?.entries?.isNotEmpty() == true && state.submittedSearchQuery.isNotEmpty()) {
-                        ShowMoreResultsButton(
-                            query = state.submittedSearchQuery,
-                            onOpenUrl = { url ->
-                                uriHandler.openUri(url)
-                            }
+
+                    item {
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            "جميع الأحاديث مُقدمة من موقع الدرر السُنية ولا نملك أي حقوق للمحتوى.",
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            textAlign = TextAlign.Right
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
-                item {
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        "جميع الأحاديث مُقدمة من موقع الدرر السُنية ولا نملك أي حقوق للمحتوى.",
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        textAlign = TextAlign.Right
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+
+
             }
-
-
-        }
     }
 }
 
@@ -296,7 +297,6 @@ private fun AppToolbar() {
 
 @Composable
 private fun HeroSearchSection() {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -334,7 +334,6 @@ private fun HeroSearchSection() {
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-        }
     }
 }
 
@@ -347,14 +346,11 @@ private fun SearchInputBar(
 ) {
     Card(
         shape = RoundedCornerShape(18.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .fillMaxWidth(),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
     ) {
-        //TODO Consider USING THIS AS ROOT
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -397,7 +393,6 @@ private fun SearchInputBar(
                 )
             }
         }
-    }
 }
 
 
@@ -422,7 +417,6 @@ private fun HadithGroupCard(
                 )
             )
     ) {
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -518,7 +512,7 @@ private fun HadithGroupCard(
                     )
                     Text(
                         text = "التفاصيل",
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(modifier = Modifier.weight(1f))
@@ -526,7 +520,7 @@ private fun HadithGroupCard(
                         Icon(
                             imageVector = Icons.Filled.ExpandMore,
                             contentDescription = if (isExpanded) "إخفاء الروايات" else "عرض الروايات",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.graphicsLayer { rotationZ = iconRotation }
                         )
                     }
@@ -553,7 +547,6 @@ private fun HadithGroupCard(
                     }
                 }
             }
-        }
     }
 
     if (showScoreDialog) {
@@ -601,7 +594,6 @@ private fun ScoreExplanationDialog(
     assessment: LegitimacyAssessment,
     onDismiss: () -> Unit
 ) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         AlertDialog(
             onDismissRequest = onDismiss,
             title = {
@@ -699,7 +691,6 @@ private fun ScoreExplanationDialog(
                 }
             }
         )
-    }
 }
 
 
@@ -879,24 +870,20 @@ private fun NarrationDetailLine(
     }
 }
 
-private data class HadithGroup(
-    val key: String,
-    val bestEntry: HadithEntry,
-    val narrations: List<HadithEntry>,
-)
 
-private fun HadithSearchResult?.orEmptyGroupedEntries(): List<HadithGroup> {
-    if (this == null) return emptyList()
 
-    return entries
-        .groupBy { Util.sanitizeHadithText(it.hadithText) }
-        .mapNotNull { (key, narrations) ->
-            val sorted = narrations.sortedByDescending { it.assessment.score }
-            val best = sorted.firstOrNull() ?: return@mapNotNull null
-            HadithGroup(key = key, bestEntry = best, narrations = sorted)
-        }
-        .sortedByDescending { it.bestEntry.assessment.score }
-}
+//private fun HadithSearchResult?.orEmptyGroupedEntries(): List<HadithGroup> {
+//    if (this == null) return emptyList()
+//
+//    return entries
+//        .groupBy { Util.sanitizeHadithText(it.hadithText) }
+//        .mapNotNull { (key, narrations) ->
+//            val sorted = narrations.sortedByDescending { it.assessment.score }
+//            val best = sorted.firstOrNull() ?: return@mapNotNull null
+//            HadithGroup(key = key, bestEntry = best, narrations = sorted)
+//        }
+//        .sortedByDescending { it.bestEntry.assessment.score }
+//}
 
 @Composable
 private fun FakeHadithCard(
@@ -904,17 +891,15 @@ private fun FakeHadithCard(
     onCorrectHadithClick: () -> Unit,
     onVerifySourceClick: () -> Unit
 ) {
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Card(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            //TODO USE THEME COLOR INSTEAD
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F5EC)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
         ) {
             Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)) {
                 Text(
                     text = "حديث مكذوب منتشر",
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(14.dp)
@@ -975,7 +960,7 @@ private fun FakeHadithCard(
                         Text(
                             text = fakeHadith.grade,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             fontWeight = FontWeight.SemiBold,
                         )
 
@@ -987,7 +972,6 @@ private fun FakeHadithCard(
                     Button(
                         onClick = onCorrectHadithClick,
                         colors = ButtonDefaults.buttonColors(
-                            //TODO MOVE COLOR TO COLORS
                             containerColor = MaterialTheme.colorScheme.secondary,
                         ),
                         modifier = Modifier
@@ -1016,10 +1000,9 @@ private fun FakeHadithCard(
                 OutlinedButton(
                     onClick = onVerifySourceClick,
                     colors = ButtonDefaults.outlinedButtonColors(
-                        //TODO MOVE COLOR TO COLORS
-                        contentColor = Color(0xFFF9F5EC)
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
                     ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onErrorContainer),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 4.dp)
@@ -1030,18 +1013,17 @@ private fun FakeHadithCard(
                     ) {
                         Icon(
                             Icons.Default.Folder, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
+                            tint = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Text(
                             text = "التحقق من المصدر",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
-        }
     }
 }
 
@@ -1153,8 +1135,8 @@ private fun rememberShimmerBrush(): Brush {
 private fun stateColor(state: LegitimacyState): Color {
     return when (state) {
         LegitimacyState.AUTHENTIC -> MaterialTheme.colorScheme.secondary
-        LegitimacyState.NEEDS_REVIEW -> MaterialTheme.colorScheme.primary
-        LegitimacyState.WEAK_OR_REJECTED -> MaterialTheme.colorScheme.error
+        LegitimacyState.NEEDS_REVIEW -> MaterialTheme.colorScheme.onPrimaryContainer
+        LegitimacyState.WEAK_OR_REJECTED -> MaterialTheme.colorScheme.onErrorContainer
     }
 }
 
@@ -1180,7 +1162,6 @@ private fun ShowMoreResultsButton(
     query: String,
     onOpenUrl: (String) -> Unit
 ) {
-    //TODO USE HTTP ENCODE?
     val encodedQuery = query.trim().encodeURLParameter()
 
     val dorarUrl = "https://dorar.net/hadith/search?q=$encodedQuery"
@@ -1318,9 +1299,10 @@ private fun NoResultsHeader() {
                 .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.14f)),
             contentAlignment = Alignment.Center
         ) {
-            Image(
+            Icon(
                 painterResource(Res.drawable.ic_no_search_results),
                 modifier = Modifier.padding(16.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                 contentDescription = null,
             )
         }
@@ -1358,6 +1340,7 @@ private fun ConnectionErrorHeader() {
             Icon(
                 Icons.Default.CloudOff,
                 modifier = Modifier.fillMaxSize().alpha(0.65f).padding(16.dp),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                 contentDescription = null,
             )
         }

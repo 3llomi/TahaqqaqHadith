@@ -20,7 +20,7 @@ class GetFakeHadithFromCache(
             emit(
                 DataState.error(
                     message = GenericMessageInfo(
-                        id = "search_error",//TODO HANDLE ERRORS
+                        id = "search_error",//TODO HANDLE SHOW ERRORS IN UI BASED ON THESE INFO
                         title = "Search Error",
                         description = e.message ?: "Unknown error",
                         uiComponentType = UIComponentType.Toast

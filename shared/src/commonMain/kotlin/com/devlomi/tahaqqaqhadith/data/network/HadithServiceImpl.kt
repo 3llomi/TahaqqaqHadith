@@ -13,8 +13,8 @@ import io.ktor.client.statement.request
 
 class HadithServiceImpl(
     private val httpClient: HttpClient,
-    private val parser: HadithHtmlParser = HadithHtmlParser(),
-    private val fakeHadithParser: FakeHadithPageParser = FakeHadithPageParser()
+    private val parser: HadithHtmlParser,
+    private val fakeHadithParser: FakeHadithPageParser,
 ) : HadithService {
 
     override suspend fun search(query: String): HadithSearchResult {

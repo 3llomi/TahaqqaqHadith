@@ -19,14 +19,6 @@ class TahaqqaqHadithApp: Application() {
         super.onCreate()
         initKoin{
             androidContext(this@TahaqqaqHadithApp)
-            modules(
-                networkModule(),
-                sharedModule,//TODO IS THIS OK to put modules here?
-                useCaseModule(),
-                viewModelModule(),
-                cacheModule(),
-                platformModule
-            )
         }
     }
 }

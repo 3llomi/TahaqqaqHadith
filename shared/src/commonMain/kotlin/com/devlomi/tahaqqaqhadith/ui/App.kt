@@ -5,51 +5,51 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.devlomi.tahaqqaqhadith.di.cacheModule
-import com.devlomi.tahaqqaqhadith.di.networkModule
-import com.devlomi.tahaqqaqhadith.di.platformModule
-import com.devlomi.tahaqqaqhadith.di.useCaseModule
-import com.devlomi.tahaqqaqhadith.di.viewModelModule
 import com.devlomi.tahaqqaqhadith.ui.home.HomeScreen
 import com.devlomi.tahaqqaqhadith.ui.home.HomeViewModel
 import com.devlomi.tahaqqaqhadith.ui.theme.HadithTheme
-import org.koin.compose.KoinApplication
+import com.devlomi.tahaqqaqhadith.ui.walkthrough.WalkthroughScreen
 import org.koin.compose.viewmodel.koinViewModel
-import org.koin.dsl.koinApplication
-import org.koin.dsl.koinConfiguration
 
 @Composable
 @Preview
 fun App() {
     HadithTheme {
-        Box(modifier = Modifier.background(MaterialTheme.colorScheme.background).safeDrawingPadding()) {
-            KoinApplication(
-                koinConfiguration {
-                    koinApplication {
-                        modules(
-                            networkModule(), useCaseModule(), viewModelModule(), cacheModule(),platformModule
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            Box(
+                modifier = Modifier.background(MaterialTheme.colorScheme.background)
+                    .safeDrawingPadding()
+            ) {
+                val navController = rememberNavController()
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Walkthrough.route
+                ) {
+                    composable(Screen.Home.route) {
+                        val viewModel = koinViewModel<HomeViewModel>()
+                        val state = viewModel.state.collectAsStateWithLifecycle().value
+                        HomeScreen(state, onEvent = viewModel::onEvent)
+                    }
+                    composable(Screen.Walkthrough.route) {
+                        WalkthroughScreen(
+                            onCompleted = {
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(Screen.Walkthrough.route) { inclusive = true }
+                                }
+                            }
                         )
                     }
-                }, content = {
-                    NavHost(
-                        navController = rememberNavController(),
-                        startDestination = Screen.Home.route
-                    ) {
-                        composable(Screen.Home.route) {
-                            val viewModel = koinViewModel<HomeViewModel>()
-                            val state = viewModel.state.collectAsStateWithLifecycle().value
-                            HomeScreen(state, onEvent = viewModel::onEvent)
-                        }
-                    }
                 }
-            )
+            }
         }
     }
 }

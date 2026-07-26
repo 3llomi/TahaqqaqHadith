@@ -9,12 +9,15 @@ import com.devlomi.tahaqqaqhadith.usecase.FetchFakeHadiths
 import com.devlomi.tahaqqaqhadith.usecase.GetFakeHadithFromCache
 import com.devlomi.tahaqqaqhadith.usecase.SearchForHadith
 import com.devlomi.tahaqqaqhadith.usecase.SetFakeHadithSeen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomeViewModel(
     private val searchUseCase: SearchForHadith,
@@ -43,35 +46,40 @@ class HomeViewModel(
                 _state.update { it.copy(fakeHadith = result) }
                 if (result.isSuccess()) {
                     launch {
-                        fetchFakeHadiths.execute().collect { remoteResult ->
-                            Logger.d { "fetchFakeHadiths: ${remoteResult.type}" }
 
-                            val currentFakeHadith = state.value.fakeHadith
-                            if (currentFakeHadith?.data != null) {
-                                return@collect
-                            }
-
-                            _state.update { state ->
-                                state.copy(
-                                    fakeHadith = state.fakeHadith?.copy(
-                                        type = remoteResult.type
-                                    )
-                                )
-                            }
-                            if (remoteResult.isSuccess()) {
-                                launch {
-                                    getLocalFakeHadithFromCache.execute().collect { newResult ->
-                                        Logger.d { "Local fake hadith from cache - Updated: ${newResult.type}" }
-                                        _state.update { it.copy(fakeHadith = newResult) }
-                                        if (newResult.isSuccess() && newResult.data != null) {
-                                            Logger.d { "New fake hadith from cache: ${newResult.data.text}" }
-                                            setFakeHadithSeen.execute(newResult.data.id, true)
-                                                .collect { }
+                        withContext(Dispatchers.IO) {
+                            fetchFakeHadiths.execute().collect { remoteResult ->
+                                Logger.d { "fetchFakeHadiths: ${remoteResult.type}" }
+                                val currentFakeHadith = state.value.fakeHadith
+                                if (currentFakeHadith?.data != null) {
+                                    return@collect
+                                }
+                                withContext(Dispatchers.Main) {
+                                    _state.update { state ->
+                                        state.copy(
+                                            fakeHadith = state.fakeHadith?.copy(
+                                                type = remoteResult.type
+                                            )
+                                        )
+                                    }
+                                    if (remoteResult.isSuccess()) {
+                                        launch {
+                                            getLocalFakeHadithFromCache.execute()
+                                                .collect { newResult ->
+                                                    Logger.d { "Local fake hadith from cache - Updated: ${newResult.type}" }
+                                                    _state.update { it.copy(fakeHadith = newResult) }
+                                                    if (newResult.isSuccess() && newResult.data != null) {
+                                                        Logger.d { "New fake hadith from cache: ${newResult.data.text}" }
+                                                        setFakeHadithSeen.execute(
+                                                            newResult.data.id,
+                                                            true
+                                                        ).collect { }
+                                                    }
+                                                }
                                         }
                                     }
                                 }
                             }
-
                         }
                     }
                 }
@@ -86,9 +94,15 @@ class HomeViewModel(
                     val query = state.value.query.trim()
                     if (query.isEmpty()) return@launch
                     _state.update { it.copy(submittedSearchQuery = query) }
-                    searchUseCase.execute(query).collect { result ->
-                        _state.value = _state.value.copy(searchResult = result)
+                    withContext(Dispatchers.IO) {
+                        searchUseCase.execute(query).collect { result ->
+                            withContext(Dispatchers.Main) {
+                                _state.value = _state.value.copy(searchResult = result)
+                            }
+                        }
                     }
+
+
                 }
             }
 

@@ -1,5 +1,7 @@
 package com.devlomi.tahaqqaqhadith.di
 
+import com.devlomi.tahaqqaqhadith.data.parser.FakeHadithPageParser
+import com.devlomi.tahaqqaqhadith.data.parser.HadithHtmlParser
 import com.devlomi.tahaqqaqhadith.usecase.FetchFakeHadiths
 import com.devlomi.tahaqqaqhadith.usecase.GetFakeHadithFromCache
 import com.devlomi.tahaqqaqhadith.usecase.SearchForHadith
@@ -19,5 +21,11 @@ fun useCaseModule() = module {
 
     factory<SetFakeHadithSeen> {
         SetFakeHadithSeen(get())
+    }
+    factory<HadithHtmlParser> {
+        HadithHtmlParser()
+    }
+    factory<FakeHadithPageParser> {
+        FakeHadithPageParser()
     }
 }

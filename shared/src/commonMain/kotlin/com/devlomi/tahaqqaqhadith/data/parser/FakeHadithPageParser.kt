@@ -1,6 +1,7 @@
 package com.devlomi.tahaqqaqhadith.data.parser
 
 import co.touchlab.kermit.Logger
+import com.devlomi.tahaqqaqhadith.BASE_URL
 import com.devlomi.tahaqqaqhadith.data.model.FakeHadith
 import com.devlomi.tahaqqaqhadith.data.model.FakeHadithPageResult
 
@@ -103,7 +104,7 @@ class FakeHadithPageParser {
             Logger.d {
                 "Parsed FakeHadith - Number: $number, Hadith: $hadith, Grade: $grade"
             }
-            val sahihAltUrl = htmlSahihAlternativeRegex.find(article)?.groupValues?.getOrNull(1)
+            val sahihAltUrl = extractHtmlSahihAlternativeUrl(article)
             val hadithUrl = htmlHadithUrlRegex(number).find(article)?.groupValues?.getOrNull(1)
 
             FakeHadith(
@@ -146,7 +147,7 @@ class FakeHadithPageParser {
 
             if (!isLikelyHadithText(hadith)) return@mapNotNull null
 
-            val sahihAltUrl = htmlSahihAlternativeRegex.find(block)?.groupValues?.getOrNull(1)
+            val sahihAltUrl = extractHtmlSahihAlternativeUrl(block)
             val hadithUrl = htmlHadithUrlRegex(number).find(block)?.groupValues?.getOrNull(1)
 
             FakeHadith(
@@ -218,6 +219,17 @@ class FakeHadithPageParser {
             .replace("&#39;", "'")
     }
 
+    private fun extractHtmlSahihAlternativeUrl(htmlBlock: String): String? {
+        val labeledMatch = htmlSahihAlternativeRegex.find(htmlBlock)
+        val prefix = "https://dorar.net"
+        if (labeledMatch != null) {
+            return labeledMatch.groupValues[1].let { prefix+it }
+        }
+
+        // Fallback for markup variants where the label text changes but `alts=1` remains stable.
+        return htmlAlternativeByQueryRegex.find(htmlBlock)?.groupValues?.getOrNull(1)?.let { prefix+it }
+    }
+
     private fun normalizeText(text: String): String = text
         .replace("\u00A0", " ")
         .replace("\\s+".toRegex(), " ")
@@ -243,7 +255,11 @@ class FakeHadithPageParser {
         private val dataPkRegex = Regex("""data-pk\s*=\s*"(\d{1,4})""", RegexOption.IGNORE_CASE)
         private val leadingHadithPrefixRegex = Regex("""^\d{1,4}\s*-\s*(?:حديث\s*:\s*)?""")
         private val htmlSahihAlternativeRegex = Regex(
-            """href\s*=\s*"([^"]+)"[^>]*>\s*الصحيح البديل""",
+            """(?is)<a\b[^>]*href\s*=\s*"([^"]+)"[^>]*>\s*(?:<[^>]+>\s*)*الصحيح\s+البديل""",
+            RegexOption.IGNORE_CASE
+        )
+        private val htmlAlternativeByQueryRegex = Regex(
+            """(?is)<a\b[^>]*href\s*=\s*"([^"]*\balts=1[^\"]*)""",
             RegexOption.IGNORE_CASE
         )
         private fun htmlHadithUrlRegex(number: Int) = Regex("""href\s*=\s*"([^"]*fake-hadith/$number[^"]*)""", RegexOption.IGNORE_CASE)

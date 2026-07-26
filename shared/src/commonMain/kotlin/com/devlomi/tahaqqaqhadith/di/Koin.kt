@@ -9,7 +9,7 @@ import org.koin.dsl.module
 
 
 val sharedModule = module {
-
+    includes(networkModule(), useCaseModule(), viewModelModule(), cacheModule())
 }
 expect val platformModule: Module
 fun initKoin(config: KoinAppDeclaration? = null): KoinApplication {

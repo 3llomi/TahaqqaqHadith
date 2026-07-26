@@ -30,3 +30,9 @@ enum class LegitimacyState {
     WEAK_OR_REJECTED
 }
 
+
+ data class HadithGroup(
+    val key: String,
+    val bestEntry: HadithEntry,
+    val narrations: List<HadithEntry>,
+)

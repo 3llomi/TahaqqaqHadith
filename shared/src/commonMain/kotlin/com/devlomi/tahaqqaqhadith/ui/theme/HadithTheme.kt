@@ -24,17 +24,19 @@ import org.jetbrains.compose.resources.Font
 
 // Tahaqqaq (Light)
 val TahaqqaqPrimaryLight = Color(0xFF081C15)
+val TahaqqaqOnPrimaryContainerLight = Color(0xFF081C15)
 val TahaqqaqSurfaceLight = Color(0xFFF9FAF2)
 val TahaqqaqSurfaceContainerLight = Color(0xFFEDECE4)
 
 // Nocturnal Scholar (Dark)
 val TahaqqaqPrimaryDark = Color(0xFF2EB67D)
+val TahaqqaqOnPrimaryContainerDark = Color(0xFF63746E)
 val TahaqqaqSurfaceDark = Color(0xFF0F1412)
 val TahaqqaqSurfaceContainerDark = Color(0xFF181D1A)
 val TahaqqaqOnSurfaceDark = Color(0xFFE1E3DE)
 
-val TahaqqaqTeritary = Color(0xFF92F7C3)//TODO HANDLE DARK
-val TahaqqaqOnTeritary = Color(0xFF00734D) //TODO HANDLE DARK
+val TahaqqaqTeritary = Color(0xFF92F7C3)
+val TahaqqaqOnTeritary = Color(0xFF00734D)
 // Semantic colors
 val AuthenticSuccess = Color(0xFF2EB67D)
 val WeakError = Color(0xFFBA1A1A)
@@ -51,6 +53,7 @@ val WheatLight = TahaqqaqOnSurfaceDark
 
 private val hadithLightColorScheme = lightColorScheme(
     primary = TahaqqaqPrimaryLight,
+    onPrimaryContainer = TahaqqaqOnPrimaryContainerLight,
     onPrimary = TahaqqaqSurfaceLight,
     secondary = AuthenticSuccess,
     onSecondary = Color.White,
@@ -64,12 +67,15 @@ private val hadithLightColorScheme = lightColorScheme(
     onSurfaceVariant = TahaqqaqPrimaryLight,
     error = WeakError,
     onError = Color.White,
+    errorContainer = Color(0xFFF9F5EC),
+    onErrorContainer = Color(0xFFA60515),
     outline = TahaqqaqPrimaryLight.copy(alpha = 0.45f),
 )
 
 private val hadithDarkColorScheme = darkColorScheme(
     primary = TahaqqaqPrimaryDark,
     onPrimary = TahaqqaqSurfaceDark,
+    onPrimaryContainer = TahaqqaqOnPrimaryContainerDark,
     secondary = TahaqqaqPrimaryDark,
     onSecondary = TahaqqaqSurfaceDark,
     tertiary = TahaqqaqSurfaceContainerDark,
@@ -82,6 +88,8 @@ private val hadithDarkColorScheme = darkColorScheme(
     onSurfaceVariant = TahaqqaqOnSurfaceDark,
     error = WeakError,
     onError = Color.White,
+    errorContainer = Color(0xFF131614),
+    onErrorContainer = Color(0xFFFF4150),
     outline = TahaqqaqPrimaryDark.copy(alpha = 0.55f),
 )
 

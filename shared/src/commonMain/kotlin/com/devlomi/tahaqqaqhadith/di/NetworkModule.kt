@@ -33,7 +33,7 @@ fun networkModule() = module {
             }
         }
     }
-    single<HadithService> { HadithServiceImpl(get()) }
+    single<HadithService> { HadithServiceImpl(get(),get(),get()) }
 
 
 }

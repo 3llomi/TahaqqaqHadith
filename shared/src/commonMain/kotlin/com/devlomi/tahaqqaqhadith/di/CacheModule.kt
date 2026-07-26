@@ -9,7 +9,7 @@ import org.koin.dsl.module
 fun cacheModule() = module {
 
     single<Database> {
-        Database(get())//TODO HANDLE PLATFORM MODULE DRIVER
+        Database(get())
     }
 
     single<FakeHadithCache> {
