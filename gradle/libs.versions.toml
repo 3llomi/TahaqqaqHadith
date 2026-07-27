@@ -3,6 +3,7 @@ agp = "9.2.1"
 android-compileSdk = "37"
 android-minSdk = "24"
 android-targetSdk = "36"
+coreSplashscreen = "1.2.0"
 sqldelight = "2.3.2"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.7.1"
@@ -24,6 +25,7 @@ navigationCompose = "2.9.2"
 
 
 [libraries]
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
 sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
 sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }

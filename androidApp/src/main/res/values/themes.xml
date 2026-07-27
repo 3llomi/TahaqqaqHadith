@@ -1,0 +1,17 @@
+<resources>
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Background color of the splash screen -->
+        <item name="windowSplashScreenBackground">#F1F3EB</item>
+
+        <!-- App icon or animated vector asset -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+
+        <!-- Theme to apply after the splash screen finishes -->
+        <item name="postSplashScreenTheme">@style/Theme.MyApp</item>
+    </style>
+
+    <!-- Your standard app theme -->
+    <style name="Theme.MyApp" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Main application styles here -->
+    </style>
+</resources>

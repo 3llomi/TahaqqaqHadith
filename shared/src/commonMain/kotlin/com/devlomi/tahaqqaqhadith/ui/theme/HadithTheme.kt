@@ -11,15 +11,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import myapplication.shared.generated.resources.Res
-import myapplication.shared.generated.resources.alex
 import myapplication.shared.generated.resources.amiri
-import myapplication.shared.generated.resources.literata
 import myapplication.shared.generated.resources.noto_hinted
-import myapplication.shared.generated.resources.noto_sans_arabic
-import myapplication.shared.generated.resources.noto_sans_arabic_fixed
-import myapplication.shared.generated.resources.noto_sans_reg
-import myapplication.shared.generated.resources.noto_serif
-import myapplication.shared.generated.resources.source_sans
 import org.jetbrains.compose.resources.Font
 
 // Tahaqqaq (Light)
@@ -42,14 +35,7 @@ val AuthenticSuccess = Color(0xFF2EB67D)
 val WeakError = Color(0xFFBA1A1A)
 val ErrorBg = Color(0xFFFF9090)
 
-// Compatibility aliases used by existing UI files.
-val GoldenWheat = TahaqqaqPrimaryDark
-val Forest = TahaqqaqSurfaceContainerDark
-val ForestDark = TahaqqaqSurfaceDark
-val Charcoal = TahaqqaqSurfaceDark
-val CharcoalSoft = TahaqqaqSurfaceContainerDark
-val DeepUmber = WeakError
-val WheatLight = TahaqqaqOnSurfaceDark
+
 
 private val hadithLightColorScheme = lightColorScheme(
     primary = TahaqqaqPrimaryLight,
@@ -58,7 +44,8 @@ private val hadithLightColorScheme = lightColorScheme(
     secondary = AuthenticSuccess,
     onSecondary = Color.White,
     tertiary = TahaqqaqTeritary,
-    onTertiary = TahaqqaqOnTeritary,
+    onTertiary = TahaqqaqOnTeritary ,
+    tertiaryContainer = Color(0xFFF3F4EC),
     background = TahaqqaqSurfaceLight,
     onBackground = TahaqqaqPrimaryLight,
     surface = TahaqqaqSurfaceLight,
@@ -80,6 +67,7 @@ private val hadithDarkColorScheme = darkColorScheme(
     onSecondary = TahaqqaqSurfaceDark,
     tertiary = TahaqqaqSurfaceContainerDark,
     onTertiary = TahaqqaqOnSurfaceDark,
+    tertiaryContainer = Color(0xFF414239),
     background = TahaqqaqSurfaceDark,
     onBackground = TahaqqaqOnSurfaceDark,
     surface = TahaqqaqSurfaceDark,
