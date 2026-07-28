@@ -107,8 +107,6 @@ This project is provided for educational and religious purposes. All Islamic con
 For questions, feedback, or support:
 - 📧 Email: contact@devlomi.com
 - 🐛 Report Issues: [GitHub Issues](https://github.com/devlomi/TahaqqaqHadith/issues)
-- 💬 Community: [Community Forum](https://tahaqqaqhadith.com/community)
-
 ---
 
 **Made with ❤️ for the Islamic community**
