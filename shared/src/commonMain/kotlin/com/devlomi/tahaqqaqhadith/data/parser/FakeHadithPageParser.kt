@@ -47,9 +47,6 @@ class FakeHadithPageParser {
             val sahihAltUrl = sahihAlternativeRegex.find(block)?.groupValues?.getOrNull(1)
             val hadithUrl = emptyLinkToHadithRegex.find(block)?.groupValues?.getOrNull(1)
 
-            Logger.d {
-                "Parsed FakeHadith - Number: $number, Heading: $heading, Grade: $grade, SahihAltUrl: $sahihAltUrl, HadithUrl: $hadithUrl"
-            }
             val extraLines = block
                 .lineSequence()
                 .drop(1)
@@ -101,9 +98,7 @@ class FakeHadithPageParser {
                 ?.let(::stripHtml)
                 ?.let(::normalizeText)
 
-            Logger.d {
-                "Parsed FakeHadith - Number: $number, Hadith: $hadith, Grade: $grade"
-            }
+
             val sahihAltUrl = extractHtmlSahihAlternativeUrl(article)
             val hadithUrl = htmlHadithUrlRegex(number).find(article)?.groupValues?.getOrNull(1)
 
@@ -140,7 +135,6 @@ class FakeHadithPageParser {
             val rawHadithText = block
                 .substringBefore("الدرجة")
                 .substringBefore("الصحيح البديل")
-            Logger.d { "Parsing FakeHadith - Number: $number, RawHadithText: $rawHadithText, Grade: $grade" }
             val hadith = rawHadithBodyRegex.find(rawHadithText)?.groupValues?.getOrNull(1)
                 ?.let(::normalizeText)
                 ?: normalizeText(stripHtml(rawHadithText))

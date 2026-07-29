@@ -82,6 +82,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import co.touchlab.kermit.Logger
 import com.devlomi.tahaqqahhadith.datasource.cache.FakeHadith_Entity
@@ -114,6 +115,7 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
 
     val groupedEntries = state.searchResult?.data
     var isVisible by remember { mutableStateOf(true) }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(Unit) {
 //        onEvent(HomeEvents.OnQueryTextChange("بورك"))
@@ -165,6 +167,7 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                                 onQueryChange = { onEvent(HomeEvents.OnQueryTextChange(it)) },
                                 onSearch = {
                                     isVisible = false
+                                    focusManager.clearFocus()
                                     onEvent(HomeEvents.Search)
                                 }
                             )
@@ -222,9 +225,6 @@ fun HomeScreen(state: HomeState, onEvent: (HomeEvents) -> Unit) {
                         when {
                             state.fakeHadith?.isLoading() == true -> {
                                 item {
-                                    Logger.d {
-                                        "Fake Hadith is loading..."
-                                    }
                                     ShimmerLoadingList(1)
                                 }
                             }

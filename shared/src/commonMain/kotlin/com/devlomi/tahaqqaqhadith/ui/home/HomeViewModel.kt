@@ -41,7 +41,6 @@ class HomeViewModel(
             //TODO PERHAPS IMPLEMENT A REPOSITORY INSTEAD?
              */
             getLocalFakeHadithFromCache.execute().collect { result ->
-                Logger.d { "Local fake hadith from cache: ${result.type}" }
                 //TODO HANDLE WHEN TO SHOW A NEW HADITH?
                 _state.update { it.copy(fakeHadith = result) }
                 if (result.isSuccess()) {
@@ -49,7 +48,6 @@ class HomeViewModel(
 
                         withContext(Dispatchers.IO) {
                             fetchFakeHadiths.execute().collect { remoteResult ->
-                                Logger.d { "fetchFakeHadiths: ${remoteResult.type}" }
                                 val currentFakeHadith = state.value.fakeHadith
                                 if (currentFakeHadith?.data != null) {
                                     return@collect
@@ -66,10 +64,8 @@ class HomeViewModel(
                                         launch {
                                             getLocalFakeHadithFromCache.execute()
                                                 .collect { newResult ->
-                                                    Logger.d { "Local fake hadith from cache - Updated: ${newResult.type}" }
                                                     _state.update { it.copy(fakeHadith = newResult) }
                                                     if (newResult.isSuccess() && newResult.data != null) {
-                                                        Logger.d { "New fake hadith from cache: ${newResult.data.text}" }
                                                         setFakeHadithSeen.execute(
                                                             newResult.data.id,
                                                             true

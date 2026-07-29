@@ -31,17 +31,12 @@ class HadithServiceImpl(
         val request = httpClient.get("fake-hadith") {
             parameter("page", page.toString())
         }
-        Logger.d { "RequestURL ${request.request.url}" }
         val rawHtml = request.bodyAsText()
-        Logger.d { "Fetching fake hadiths for page $page -" }
         val parsed = fakeHadithParser.parse(page = page, rawContent = rawHtml)
         if (parsed.isHighConfidence()) return parsed
 
 
 
-        Logger.d("SearchServiceImpl direct parse is empty/low confidence, trying fallback mirror for page $page")
-        Logger.d("Direct parse result: ${parsed.items.size} items, isHighConfidence: ${parsed.isHighConfidence()}")
-        Logger.d("Direct RAW result: $rawHtml")
         // Fallback mirror helps in environments where direct site access is challenge-protected.
         val mirroredContent = httpClient.get("https://r.jina.ai/http://dorar.net/fake-hadith") {
             parameter("page", page.toString())
@@ -52,7 +47,6 @@ class HadithServiceImpl(
 
     private fun FakeHadithPageResult.isHighConfidence(): Boolean {
         if (items.isEmpty()) {
-            Logger.d { "Items is empty" }
             return false
         }
 
@@ -60,7 +54,6 @@ class HadithServiceImpl(
         val validGrades = items.count { !it.grade.isNullOrBlank() }
         val validBodies = items.count { it.hadith.length >= 12 }
 
-        Logger.d { "Valid Links ${validLinks} Valid Grades $validGrades validBodies $validBodies" }
         // A trustworthy parse should have mostly plausible hadith text and some page links/grades.
         return validBodies >= (items.size * 0.8) && (validLinks > 0 || validGrades > 0)
     }
