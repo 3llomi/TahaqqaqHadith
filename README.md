@@ -40,7 +40,9 @@
 </a>
 
 ### iOS
-🔜 **Coming Soon** – iOS app is in development and will be available on the App Store shortly.
+<a href="https://apps.apple.com/us/app/%D8%AA%D8%AD%D9%82%D9%82-%D8%AD%D8%AF%D9%8A%D8%AB/id6795708333" target="_blank">
+  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="80" />
+</a>
 
 ---
 
